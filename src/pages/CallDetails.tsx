@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Phone, MessageSquare, Clock, User, RefreshCw, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -57,6 +58,8 @@ const CallDetails = () => {
   const [chartFrequency, setChartFrequency] = useState<string>("hourly");
   const [historyTimePeriod, setHistoryTimePeriod] = useState<string>("day");
   const [filteredCalls, setFilteredCalls] = useState<Call[]>([]);
+  const [selectedPeriodData, setSelectedPeriodData] = useState<any>(null);
+  const [showPeriodModal, setShowPeriodModal] = useState(false);
   const { toast } = useToast();
 
   // Stats state
@@ -271,10 +274,19 @@ const CallDetails = () => {
     };
   };
 
-  const handleBarClick = () => {
-    // This would navigate to the call history tab
-    // For now, we'll just log it since we're implementing tabs
-    console.log('Bar clicked - showing call history');
+  const handleBarClick = (data: any) => {
+    if (data && data.activePayload && data.activePayload.length > 0) {
+      const clickedData = data.activePayload[0].payload;
+      setSelectedPeriodData({
+        ...clickedData,
+        periodDetails: `${chartFrequency} - ${clickedData.period}`,
+        totalCalls: clickedData.calls,
+        completionRate: Math.round((clickedData.completed / clickedData.calls) * 100),
+        partialRate: Math.round((clickedData.partial / clickedData.calls) * 100),
+        failureRate: Math.round((clickedData.notCompleted / clickedData.calls) * 100)
+      });
+      setShowPeriodModal(true);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -629,6 +641,105 @@ const CallDetails = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Period Details Modal */}
+      <Dialog open={showPeriodModal} onOpenChange={setShowPeriodModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Period Details
+            </DialogTitle>
+            <DialogDescription>
+              {selectedPeriodData?.periodDetails}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedPeriodData && (
+            <div className="space-y-6">
+              {/* Summary Stats */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-4 bg-muted rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {selectedPeriodData.totalCalls}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Total Calls</p>
+                </div>
+                <div className="text-center p-4 bg-muted rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">
+                    {selectedPeriodData.completionRate}%
+                  </div>
+                  <p className="text-sm text-muted-foreground">Completion Rate</p>
+                </div>
+              </div>
+
+              {/* Breakdown */}
+              <div className="space-y-3">
+                <h4 className="font-semibold">Call Breakdown:</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center p-2 bg-green-50 rounded">
+                    <span className="text-sm font-medium">Completed</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-green-600">
+                        {selectedPeriodData.completed}
+                      </span>
+                      <Badge variant="secondary" className="text-xs">
+                        {selectedPeriodData.completionRate}%
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center p-2 bg-yellow-50 rounded">
+                    <span className="text-sm font-medium">Partial</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-yellow-600">
+                        {selectedPeriodData.partial}
+                      </span>
+                      <Badge variant="secondary" className="text-xs">
+                        {selectedPeriodData.partialRate}%
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center p-2 bg-red-50 rounded">
+                    <span className="text-sm font-medium">Not Completed</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-red-600">
+                        {selectedPeriodData.notCompleted}
+                      </span>
+                      <Badge variant="secondary" className="text-xs">
+                        {selectedPeriodData.failureRate}%
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="flex gap-2 pt-4 border-t">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    setShowPeriodModal(false);
+                    // Switch to history tab to see the calls for this period
+                    const historyTab = document.querySelector('[value="history"]') as HTMLElement;
+                    historyTab?.click();
+                  }}
+                >
+                  View Call History
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setShowPeriodModal(false)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
