@@ -118,11 +118,26 @@ const Integrations = () => {
 
     const integration = configModal.integration;
     
-    // For security reasons, we can't save secrets directly from the frontend
-    // Instead, we'll guide users to use the secret forms
+    // Trigger the appropriate secret forms based on the integration
+    if (integration.secretName) {
+      // Single secret (OpenAI, Cal.com)
+      const event = new CustomEvent('lov-secret-form', {
+        detail: { name: integration.secretName }
+      });
+      window.dispatchEvent(event);
+    } else if (integration.secrets) {
+      // Multiple secrets (Twilio)
+      integration.secrets.forEach((secret: string) => {
+        const event = new CustomEvent('lov-secret-form', {
+          detail: { name: secret }
+        });
+        window.dispatchEvent(event);
+      });
+    }
+    
     toast({
-      title: "Use Secret Forms",
-      description: `Please use the secret form buttons below to securely configure your ${integration.title} API key.`,
+      title: "Configuration Started",
+      description: `Please configure your ${integration.title} secrets using the secure forms.`,
       variant: "default",
     });
     
@@ -378,54 +393,6 @@ const Integrations = () => {
                           {link.label}
                         </a>
                       </Button>
-                    ))}
-                  </div>
-
-                  {/* Secret Form Buttons for Secure Configuration */}
-                  <div className="flex flex-wrap gap-2 pt-2 border-t">
-                    <p className="text-xs text-muted-foreground w-full mb-2">Secure API Key Management:</p>
-                    {integration.secretName && (
-                      <form action="#" method="post">
-                        <input type="hidden" name="secret_name" value={integration.secretName} />
-                        <Button 
-                          type="button"
-                          variant="default" 
-                          size="sm"
-                          className="bg-primary text-primary-foreground hover:bg-primary/90"
-                          onClick={() => {
-                            // Create and submit a secret form
-                            const event = new CustomEvent('lov-secret-form', {
-                              detail: { name: integration.secretName }
-                            });
-                            window.dispatchEvent(event);
-                          }}
-                        >
-                          <Key className="h-4 w-4 mr-1" />
-                          Set {integration.title} API Key
-                        </Button>
-                      </form>
-                    )}
-                    
-                    {integration.secrets && integration.secrets.map((secret) => (
-                      <form key={secret} action="#" method="post">
-                        <input type="hidden" name="secret_name" value={secret} />
-                        <Button 
-                          type="button"
-                          variant="default" 
-                          size="sm"
-                          className="bg-primary text-primary-foreground hover:bg-primary/90"
-                          onClick={() => {
-                            // Create and submit a secret form
-                            const event = new CustomEvent('lov-secret-form', {
-                              detail: { name: secret }
-                            });
-                            window.dispatchEvent(event);
-                          }}
-                        >
-                          <Key className="h-4 w-4 mr-1" />
-                          Set {secret.replace('_', ' ')}
-                        </Button>
-                      </form>
                     ))}
                   </div>
 
