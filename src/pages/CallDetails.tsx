@@ -60,6 +60,7 @@ const CallDetails = () => {
   const [filteredCalls, setFilteredCalls] = useState<Call[]>([]);
   const [selectedPeriodData, setSelectedPeriodData] = useState<any>(null);
   const [showPeriodModal, setShowPeriodModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("overview");
   const { toast } = useToast();
 
   // Stats state
@@ -338,7 +339,7 @@ const CallDetails = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="history">Call History</TabsTrigger>
@@ -715,16 +716,13 @@ const CallDetails = () => {
                 </div>
               </div>
 
-              {/* Quick Actions */}
               <div className="flex gap-2 pt-4 border-t">
                 <Button 
                   variant="outline" 
                   className="flex-1"
                   onClick={() => {
                     setShowPeriodModal(false);
-                    // Switch to history tab to see the calls for this period
-                    const historyTab = document.querySelector('[value="history"]') as HTMLElement;
-                    historyTab?.click();
+                    setActiveTab("history");
                   }}
                 >
                   View Call History
