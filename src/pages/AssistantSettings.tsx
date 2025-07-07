@@ -29,8 +29,8 @@ const AssistantSettings = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      assistantName: "Lucy",
-      openingMessage: "Hello! Thank you for calling. I'm Lucy, your AI assistant. How may I help you today?",
+      assistantName: "Hannah",
+      openingMessage: "Hello! Thank you for calling. I'm Hannah, your AI assistant. How may I help you today?",
       services: {
         takeContactInfo: true,
         provideContactDetails: false,
@@ -75,7 +75,7 @@ const AssistantSettings = () => {
                   <FormItem>
                     <FormLabel>Assistant Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter assistant name (e.g., Lucy, Acme Corp Assistant)" {...field} />
+                      <Input placeholder="Enter assistant name (e.g., Hannah, Acme Corp Assistant)" {...field} />
                     </FormControl>
                     <FormDescription>
                       This can be a personal name or your company name

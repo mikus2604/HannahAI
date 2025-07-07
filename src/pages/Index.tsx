@@ -228,7 +228,7 @@ const Index = () => {
                             <div className="flex items-center gap-2 mb-1">
                               <User className="h-3 w-3" />
                               <span className="text-xs font-medium uppercase">
-                                {transcript.speaker === 'agent' ? 'Lucy (AI)' : 'Caller'}
+                                {transcript.speaker === 'agent' ? 'Hannah (AI)' : 'Caller'}
                               </span>
                               <span className="text-xs text-muted-foreground">
                                 {formatDate(transcript.timestamp)}
@@ -260,7 +260,7 @@ const Index = () => {
         <Card className="mt-6">
           <CardHeader>
             <CardTitle>Setup Instructions</CardTitle>
-            <CardDescription>Configure Twilio to use your Lucy AI agent</CardDescription>
+            <CardDescription>Configure Twilio to use your Hannah AI agent</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -287,7 +287,7 @@ const Index = () => {
               <div>
                 <h4 className="font-semibold mb-2">3. Test Your Setup</h4>
                 <p className="text-sm text-muted-foreground">
-                  Call or text your Twilio number to test Lucy's AI responses. 
+                  Call or text your Twilio number to test Hannah's AI responses. 
                   All interactions will appear in the call logs above.
                 </p>
               </div>
