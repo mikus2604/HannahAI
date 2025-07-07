@@ -33,7 +33,9 @@ serve(async (req) => {
     const speechResult = formData.get('SpeechResult') as string || '';
     const digits = formData.get('Digits') as string || '';
 
-    console.log('Incoming call:', { callSid, from, to, callStatus, speechResult, digits });
+    console.log('=== WEBHOOK CALLED ===', { callSid, from, to, callStatus, speechResult, digits });
+    console.log('Request method:', req.method);
+    console.log('Content-Type:', req.headers.get('content-type'));
 
     // Get or create call record
     let { data: call, error: callError } = await supabase
