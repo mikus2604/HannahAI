@@ -73,6 +73,18 @@ const Integrations = () => {
     return data;
   });
 
+  const testTwilio = () => testAPI('twilio', async () => {
+    const { data, error } = await supabase.functions.invoke('test-twilio');
+    if (error) throw error;
+    return data;
+  });
+
+  const testCalcom = () => testAPI('calcom', async () => {
+    const { data, error } = await supabase.functions.invoke('test-calcom');
+    if (error) throw error;
+    return data;
+  });
+
   const openConfigModal = (integration: any) => {
     setConfigModal({ open: true, integration });
     // Pre-populate form with existing values if any
@@ -241,6 +253,7 @@ const Integrations = () => {
       icon: Phone,
       status: 'configured',
       secrets: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN'],
+      testFunction: testTwilio,
       links: [
         { label: 'Twilio Console', url: 'https://console.twilio.com' },
         { label: 'API Keys', url: 'https://console.twilio.com/project/api-keys' }
@@ -253,6 +266,7 @@ const Integrations = () => {
       icon: Calendar,
       status: 'not-configured',
       secretName: 'CALCOM_API_KEY',
+      testFunction: testCalcom,
       links: [
         { label: 'Cal.com Settings', url: 'https://cal.com/settings/developer' },
         { label: 'API Documentation', url: 'https://developer.cal.com' }
