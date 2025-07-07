@@ -79,6 +79,10 @@ const CallDetails = () => {
     fetchAllData();
   }, []);
 
+  useEffect(() => {
+    fetchChartData();
+  }, [timePeriod, chartFrequency]);
+
   const fetchAllData = async () => {
     setLoading(true);
     await Promise.all([
@@ -141,18 +145,80 @@ const CallDetails = () => {
     }
   };
 
+  const generateChartData = () => {
+    const now = new Date();
+    const data = [];
+    
+    // Determine the number of periods and date calculation based on frequency
+    let periods = 0;
+    let dateFormatter: (date: Date) => string;
+    let dateIncrement: (date: Date, amount: number) => Date;
+    
+    switch (chartFrequency) {
+      case 'hourly':
+        periods = timePeriod === 'day' ? 24 : timePeriod === 'week' ? 168 : 24;
+        dateFormatter = (date) => date.getHours() + ':00';
+        dateIncrement = (date, hours) => new Date(date.getTime() - hours * 60 * 60 * 1000);
+        break;
+      case 'daily':
+        periods = timePeriod === 'week' ? 7 : timePeriod === 'month' ? 30 : timePeriod === 'quarter' ? 90 : timePeriod === 'year' ? 365 : 30;
+        dateFormatter = (date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        dateIncrement = (date, days) => new Date(date.getTime() - days * 24 * 60 * 60 * 1000);
+        break;
+      case 'weekly':
+        periods = timePeriod === 'month' ? 4 : timePeriod === 'quarter' ? 12 : timePeriod === 'year' ? 52 : 12;
+        dateFormatter = (date) => `Week ${Math.ceil(date.getDate() / 7)}`;
+        dateIncrement = (date, weeks) => new Date(date.getTime() - weeks * 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'monthly':
+        periods = timePeriod === 'quarter' ? 3 : timePeriod === 'year' ? 12 : 12;
+        dateFormatter = (date) => date.toLocaleDateString('en-US', { month: 'short' });
+        dateIncrement = (date, months) => {
+          const newDate = new Date(date);
+          newDate.setMonth(newDate.getMonth() - months);
+          return newDate;
+        };
+        break;
+      case 'quarterly':
+        periods = timePeriod === 'year' ? 4 : 4;
+        dateFormatter = (date) => `Q${Math.ceil((date.getMonth() + 1) / 3)}`;
+        dateIncrement = (date, quarters) => {
+          const newDate = new Date(date);
+          newDate.setMonth(newDate.getMonth() - quarters * 3);
+          return newDate;
+        };
+        break;
+      default:
+        periods = 24;
+        dateFormatter = (date) => date.getHours() + ':00';
+        dateIncrement = (date, hours) => new Date(date.getTime() - hours * 60 * 60 * 1000);
+    }
+    
+    // Generate mock data for each period
+    for (let i = periods - 1; i >= 0; i--) {
+      const periodDate = dateIncrement(now, i);
+      const baseCalls = Math.floor(Math.random() * 20) + 5; // 5-25 calls
+      const completed = Math.floor(baseCalls * (0.6 + Math.random() * 0.3)); // 60-90% completion
+      const partial = Math.floor((baseCalls - completed) * (0.4 + Math.random() * 0.4)); // 40-80% of remaining
+      const notCompleted = baseCalls - completed - partial;
+      
+      data.push({
+        period: dateFormatter(periodDate),
+        calls: baseCalls,
+        completed,
+        partial,
+        notCompleted
+      });
+    }
+    
+    return data;
+  };
+
   const fetchChartData = async () => {
     try {
-      // Mock chart data - replace with actual aggregated data
-      const mockData = [
-        { period: "9 AM", calls: 12, completed: 8, partial: 3, notCompleted: 1 },
-        { period: "10 AM", calls: 18, completed: 14, partial: 2, notCompleted: 2 },
-        { period: "11 AM", calls: 15, completed: 11, partial: 3, notCompleted: 1 },
-        { period: "12 PM", calls: 22, completed: 16, partial: 4, notCompleted: 2 },
-        { period: "1 PM", calls: 19, completed: 13, partial: 4, notCompleted: 2 },
-        { period: "2 PM", calls: 16, completed: 12, partial: 2, notCompleted: 2 }
-      ];
-      setChartData(mockData);
+      // Generate data based on current filter selections
+      const generatedData = generateChartData();
+      setChartData(generatedData);
     } catch (error) {
       console.error('Error fetching chart data:', error);
     }
