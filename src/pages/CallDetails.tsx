@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Phone, MessageSquare, Clock, User, RefreshCw, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -44,6 +47,7 @@ interface CallDetails {
 }
 
 const CallDetails = () => {
+  const navigate = useNavigate();
   const [calls, setCalls] = useState<Call[]>([]);
   const [currentCall, setCurrentCall] = useState<Call | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,6 +55,8 @@ const CallDetails = () => {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [timePeriod, setTimePeriod] = useState<string>("day");
   const [chartFrequency, setChartFrequency] = useState<string>("hourly");
+  const [historyTimePeriod, setHistoryTimePeriod] = useState<string>("day");
+  const [filteredCalls, setFilteredCalls] = useState<Call[]>([]);
   const { toast } = useToast();
 
   // Stats state
@@ -82,6 +88,10 @@ const CallDetails = () => {
   useEffect(() => {
     fetchChartData();
   }, [timePeriod, chartFrequency]);
+
+  useEffect(() => {
+    filterCallsByPeriod();
+  }, [historyTimePeriod, calls]);
 
   const fetchAllData = async () => {
     setLoading(true);
@@ -224,6 +234,49 @@ const CallDetails = () => {
     }
   };
 
+  const filterCallsByPeriod = () => {
+    const now = new Date();
+    let startDate = new Date();
+
+    switch (historyTimePeriod) {
+      case 'hour':
+        startDate.setHours(now.getHours() - 1);
+        break;
+      case 'day':
+        startDate.setDate(now.getDate() - 1);
+        break;
+      case 'week':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'quarter':
+        startDate.setMonth(now.getMonth() - 3);
+        break;
+      case 'year':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+    }
+
+    const filtered = calls.filter(call => new Date(call.started_at) >= startDate);
+    setFilteredCalls(filtered);
+  };
+
+  const getHistoryStats = () => {
+    return {
+      completed: filteredCalls.filter(call => call.call_status === 'completed').length,
+      partial: filteredCalls.filter(call => call.call_status.includes('partial')).length,
+      notCompleted: filteredCalls.filter(call => call.call_status === 'failed' || call.call_status === 'cancelled').length
+    };
+  };
+
+  const handleBarClick = () => {
+    // This would navigate to the call history tab
+    // For now, we'll just log it since we're implementing tabs
+    console.log('Bar clicked - showing call history');
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800';
@@ -246,6 +299,8 @@ const CallDetails = () => {
     }
     return phone;
   };
+
+  const historyStats = getHistoryStats();
 
   return (
     <div className="flex-1 space-y-6 p-6">
@@ -271,184 +326,309 @@ const CallDetails = () => {
         </div>
       </div>
 
-      {/* Current/Last Call */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Phone className="h-5 w-5" />
-            {currentCall?.call_status === 'in-progress' ? 'Current Call' : 'Last Call'}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {currentCall ? (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  {currentCall.call_status === 'sms_completed' ? (
-                    <MessageSquare className="h-4 w-4" />
-                  ) : (
-                    <Phone className="h-4 w-4" />
-                  )}
-                  <span className="font-medium">{formatPhoneNumber(currentCall.from_number)}</span>
-                </div>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  {formatDate(currentCall.started_at)}
-                </div>
-                {currentCall.call_duration && (
-                  <span className="text-sm text-muted-foreground">{currentCall.call_duration}s</span>
-                )}
-              </div>
-              <Badge className={getStatusColor(currentCall.call_status)}>
-                {currentCall.call_status.replace('_', ' ')}
-              </Badge>
-            </div>
-          ) : (
-            <div className="text-center py-4 text-muted-foreground">
-              No calls yet
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="history">Call History</TabsTrigger>
+        </TabsList>
 
-      {/* Today's Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <Phone className="h-8 w-8 text-blue-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Calls Today</p>
-                <p className="text-2xl font-bold">{todayStats.callsToday}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-                <div className="h-3 w-3 bg-green-600 rounded-full animate-pulse" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Live Calls</p>
-                <p className="text-2xl font-bold">{todayStats.liveCalls}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <MessageSquare className="h-8 w-8 text-orange-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Other Calls</p>
-                <p className="text-2xl font-bold">{todayStats.otherCalls}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Stats Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Customer Contact Info</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{callStats.contactInfo}</div>
-            <p className="text-muted-foreground">Contacts collected</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Call Completion Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Completed</span>
-                <span className="text-sm font-bold text-green-600">{callStats.completed}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Partial</span>
-                <span className="text-sm font-bold text-yellow-600">{callStats.partial}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Not Completed</span>
-                <span className="text-sm font-bold text-red-600">{callStats.notCompleted}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
+        <TabsContent value="overview" className="space-y-6">
+          {/* Current/Last Call */}
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Call Analytics
+                <Phone className="h-5 w-5" />
+                {currentCall?.call_status === 'in-progress' ? 'Current Call' : 'Last Call'}
               </CardTitle>
-              <CardDescription>Call volume and completion rates over time</CardDescription>
-            </div>
-            <div className="flex gap-2">
-              <Select value={timePeriod} onValueChange={setTimePeriod}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="hour">Hour</SelectItem>
-                  <SelectItem value="day">Day</SelectItem>
-                  <SelectItem value="week">Week</SelectItem>
-                  <SelectItem value="month">Month</SelectItem>
-                  <SelectItem value="quarter">Quarter</SelectItem>
-                  <SelectItem value="year">Year</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={chartFrequency} onValueChange={setChartFrequency}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="hourly">Hourly</SelectItem>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            </CardHeader>
+            <CardContent>
+              {currentCall ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      {currentCall.call_status === 'sms_completed' ? (
+                        <MessageSquare className="h-4 w-4" />
+                      ) : (
+                        <Phone className="h-4 w-4" />
+                      )}
+                      <span className="font-medium">{formatPhoneNumber(currentCall.from_number)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {formatDate(currentCall.started_at)}
+                    </div>
+                    {currentCall.call_duration && (
+                      <span className="text-sm text-muted-foreground">{currentCall.call_duration}s</span>
+                    )}
+                  </div>
+                  <Badge className={getStatusColor(currentCall.call_status)}>
+                    {currentCall.call_status.replace('_', ' ')}
+                  </Badge>
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">
+                  No calls yet
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Today's Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <Phone className="h-8 w-8 text-blue-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-muted-foreground">Calls Today</p>
+                    <p className="text-2xl font-bold">{todayStats.callsToday}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <div className="h-3 w-3 bg-green-600 rounded-full animate-pulse" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-muted-foreground">Live Calls</p>
+                    <p className="text-2xl font-bold">{todayStats.liveCalls}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <MessageSquare className="h-8 w-8 text-orange-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-muted-foreground">Other Calls</p>
+                    <p className="text-2xl font-bold">{todayStats.otherCalls}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer
-            config={{
-              calls: { label: "Total Calls", color: "hsl(var(--chart-1))" },
-              completed: { label: "Completed", color: "hsl(var(--chart-2))" },
-              partial: { label: "Partial", color: "hsl(var(--chart-3))" },
-              notCompleted: { label: "Not Completed", color: "hsl(var(--chart-4))" }
-            }}
-            className="h-80"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <XAxis dataKey="period" />
-                <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="calls" fill="var(--color-calls)" name="Total Calls" />
-                <Bar dataKey="completed" fill="var(--color-completed)" name="Completed" />
-                <Bar dataKey="partial" fill="var(--color-partial)" name="Partial" />
-                <Bar dataKey="notCompleted" fill="var(--color-notCompleted)" name="Not Completed" />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-        </CardContent>
-      </Card>
+
+          {/* Stats Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Customer Contact Info</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{callStats.contactInfo}</div>
+                <p className="text-muted-foreground">Contacts collected</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Call Completion Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Completed</span>
+                    <span className="text-sm font-bold text-green-600">{callStats.completed}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Partial</span>
+                    <span className="text-sm font-bold text-yellow-600">{callStats.partial}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Not Completed</span>
+                    <span className="text-sm font-bold text-red-600">{callStats.notCompleted}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts Section */}
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5" />
+                    Call Analytics
+                  </CardTitle>
+                  <CardDescription>Call volume and completion rates over time</CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Select value={timePeriod} onValueChange={setTimePeriod}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hour">Hour</SelectItem>
+                      <SelectItem value="day">Day</SelectItem>
+                      <SelectItem value="week">Week</SelectItem>
+                      <SelectItem value="month">Month</SelectItem>
+                      <SelectItem value="quarter">Quarter</SelectItem>
+                      <SelectItem value="year">Year</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={chartFrequency} onValueChange={setChartFrequency}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hourly">Hourly</SelectItem>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  calls: { label: "Total Calls", color: "hsl(var(--chart-1))" },
+                  completed: { label: "Completed", color: "hsl(var(--chart-2))" },
+                  partial: { label: "Partial", color: "hsl(var(--chart-3))" },
+                  notCompleted: { label: "Not Completed", color: "hsl(var(--chart-4))" }
+                }}
+                className="h-80"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} onClick={handleBarClick}>
+                    <XAxis dataKey="period" />
+                    <YAxis />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="calls" fill="var(--color-calls)" name="Total Calls" />
+                    <Bar dataKey="completed" fill="var(--color-completed)" name="Completed" />
+                    <Bar dataKey="partial" fill="var(--color-partial)" name="Partial" />
+                    <Bar dataKey="notCompleted" fill="var(--color-notCompleted)" name="Not Completed" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history" className="space-y-6">
+          {/* Time Period Filter */}
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Call History</CardTitle>
+                <Select value={historyTimePeriod} onValueChange={setHistoryTimePeriod}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hour">Hour</SelectItem>
+                    <SelectItem value="day">Day</SelectItem>
+                    <SelectItem value="week">Week</SelectItem>
+                    <SelectItem value="month">Month</SelectItem>
+                    <SelectItem value="quarter">Quarter</SelectItem>
+                    <SelectItem value="year">Year</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* History Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <div className="h-3 w-3 bg-green-600 rounded-full" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-muted-foreground">Completed</p>
+                    <p className="text-2xl font-bold">{historyStats.completed}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                    <div className="h-3 w-3 bg-yellow-600 rounded-full" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-muted-foreground">Partial</p>
+                    <p className="text-2xl font-bold">{historyStats.partial}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="h-8 w-8 bg-red-100 rounded-full flex items-center justify-center">
+                    <div className="h-3 w-3 bg-red-600 rounded-full" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-muted-foreground">Not Completed</p>
+                    <p className="text-2xl font-bold">{historyStats.notCompleted}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Calls Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>All Calls</CardTitle>
+              <CardDescription>Complete list of calls for the selected time period</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date & Time</TableHead>
+                    <TableHead>Called ID</TableHead>
+                    <TableHead>Duration</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCalls.map((call) => (
+                    <TableRow key={call.id}>
+                      <TableCell>
+                        <Button 
+                          variant="link" 
+                          className="p-0 h-auto font-normal text-blue-600 hover:text-blue-800"
+                          onClick={() => navigate(`/call/${call.id}`)}
+                        >
+                          {formatDate(call.started_at)}
+                        </Button>
+                      </TableCell>
+                      <TableCell>{formatPhoneNumber(call.from_number)}</TableCell>
+                      <TableCell>{call.call_duration ? `${call.call_duration}s` : 'N/A'}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(call.call_status)}>
+                          {call.call_status.replace('_', ' ')}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredCalls.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                        No calls found for the selected time period
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

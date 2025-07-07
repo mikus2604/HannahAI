@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppSidebar } from "@/components/AppSidebar";
 import CallDetails from "./pages/CallDetails";
+import SpecificCallDetails from "./pages/SpecificCallDetails";
 import AssistantSettings from "./pages/AssistantSettings";
 import Integrations from "./pages/Integrations";
 import PlanManagement from "./pages/PlanManagement";
@@ -29,6 +30,7 @@ const App = () => (
               <main className="flex-1">
                 <Routes>
                   <Route path="/" element={<CallDetails />} />
+                  <Route path="/call/:callId" element={<SpecificCallDetails />} />
                   <Route path="/settings" element={<AssistantSettings />} />
                   <Route path="/integrations" element={<Integrations />} />
                   <Route path="/plans" element={<PlanManagement />} />
