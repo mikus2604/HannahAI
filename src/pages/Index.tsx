@@ -113,7 +113,7 @@ const Index = () => {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Lucy AI Receptionist</h1>
+          <h1 className="text-4xl font-bold mb-2">mAIreceptionist</h1>
           <p className="text-xl text-muted-foreground">AI-powered phone answering service</p>
         </div>
 
