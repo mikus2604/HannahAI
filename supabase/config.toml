@@ -1,1 +1,10 @@
 project_id = "idupowkqzcwrjslcixsp"
+
+[functions.voice-incoming]
+verify_jwt = false
+
+[functions.sms-webhook] 
+verify_jwt = false
+
+[functions.get-call-logs]
+verify_jwt = false
