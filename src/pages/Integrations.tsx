@@ -118,19 +118,15 @@ const Integrations = () => {
 
     const integration = configModal.integration;
     
-    // Here you would typically save to Supabase secrets or your backend
-    // For now, we'll just show a success message
-    console.log('Saving configuration for:', integration.id, formData);
-    
+    // For security reasons, we can't save secrets directly from the frontend
+    // Instead, we'll guide users to use the secret forms
     toast({
-      title: "Configuration Saved",
-      description: `${integration.title} credentials have been updated successfully.`,
+      title: "Use Secret Forms",
+      description: `Please use the secret form buttons below to securely configure your ${integration.title} API key.`,
+      variant: "default",
     });
     
     closeConfigModal();
-    
-    // Update the integration status to "configured"
-    // In a real app, you'd update the state or refetch data
   };
 
   const copyToClipboard = (text: string, label: string) => {
@@ -382,6 +378,54 @@ const Integrations = () => {
                           {link.label}
                         </a>
                       </Button>
+                    ))}
+                  </div>
+
+                  {/* Secret Form Buttons for Secure Configuration */}
+                  <div className="flex flex-wrap gap-2 pt-2 border-t">
+                    <p className="text-xs text-muted-foreground w-full mb-2">Secure API Key Management:</p>
+                    {integration.secretName && (
+                      <form action="#" method="post">
+                        <input type="hidden" name="secret_name" value={integration.secretName} />
+                        <Button 
+                          type="button"
+                          variant="default" 
+                          size="sm"
+                          className="bg-primary text-primary-foreground hover:bg-primary/90"
+                          onClick={() => {
+                            // Create and submit a secret form
+                            const event = new CustomEvent('lov-secret-form', {
+                              detail: { name: integration.secretName }
+                            });
+                            window.dispatchEvent(event);
+                          }}
+                        >
+                          <Key className="h-4 w-4 mr-1" />
+                          Set {integration.title} API Key
+                        </Button>
+                      </form>
+                    )}
+                    
+                    {integration.secrets && integration.secrets.map((secret) => (
+                      <form key={secret} action="#" method="post">
+                        <input type="hidden" name="secret_name" value={secret} />
+                        <Button 
+                          type="button"
+                          variant="default" 
+                          size="sm"
+                          className="bg-primary text-primary-foreground hover:bg-primary/90"
+                          onClick={() => {
+                            // Create and submit a secret form
+                            const event = new CustomEvent('lov-secret-form', {
+                              detail: { name: secret }
+                            });
+                            window.dispatchEvent(event);
+                          }}
+                        >
+                          <Key className="h-4 w-4 mr-1" />
+                          Set {secret.replace('_', ' ')}
+                        </Button>
+                      </form>
                     ))}
                   </div>
 
