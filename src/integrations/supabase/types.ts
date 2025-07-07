@@ -14,7 +14,124 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      call_sessions: {
+        Row: {
+          call_id: string
+          collected_data: Json | null
+          context: Json | null
+          created_at: string
+          current_state: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          call_id: string
+          collected_data?: Json | null
+          context?: Json | null
+          created_at?: string
+          current_state?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          call_id?: string
+          collected_data?: Json | null
+          context?: Json | null
+          created_at?: string
+          current_state?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_sessions_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calls: {
+        Row: {
+          call_duration: number | null
+          call_status: string
+          created_at: string
+          ended_at: string | null
+          from_number: string
+          id: string
+          recording_url: string | null
+          started_at: string
+          to_number: string
+          twilio_call_sid: string
+          updated_at: string
+        }
+        Insert: {
+          call_duration?: number | null
+          call_status?: string
+          created_at?: string
+          ended_at?: string | null
+          from_number: string
+          id?: string
+          recording_url?: string | null
+          started_at?: string
+          to_number: string
+          twilio_call_sid: string
+          updated_at?: string
+        }
+        Update: {
+          call_duration?: number | null
+          call_status?: string
+          created_at?: string
+          ended_at?: string | null
+          from_number?: string
+          id?: string
+          recording_url?: string | null
+          started_at?: string
+          to_number?: string
+          twilio_call_sid?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      transcripts: {
+        Row: {
+          call_id: string
+          confidence: number | null
+          id: string
+          intent: string | null
+          message: string
+          speaker: string
+          timestamp: string
+        }
+        Insert: {
+          call_id: string
+          confidence?: number | null
+          id?: string
+          intent?: string | null
+          message: string
+          speaker: string
+          timestamp?: string
+        }
+        Update: {
+          call_id?: string
+          confidence?: number | null
+          id?: string
+          intent?: string | null
+          message?: string
+          speaker?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transcripts_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
