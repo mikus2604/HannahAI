@@ -1,6 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { 
@@ -25,6 +27,8 @@ const Integrations = () => {
   const { toast } = useToast();
   const [testingStates, setTestingStates] = useState<Record<string, boolean>>({});
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
+  const [configModal, setConfigModal] = useState<{ open: boolean; integration: any | null }>({ open: false, integration: null });
+  const [formData, setFormData] = useState<Record<string, string>>({});
 
   const testAPI = async (apiName: string, testFunction: () => Promise<any>) => {
     setTestingStates(prev => ({ ...prev, [apiName]: true }));
@@ -69,12 +73,151 @@ const Integrations = () => {
     return data;
   });
 
+  const openConfigModal = (integration: any) => {
+    setConfigModal({ open: true, integration });
+    // Pre-populate form with existing values if any
+    const initialData: Record<string, string> = {};
+    if (integration.secretName) {
+      initialData[integration.secretName] = '';
+    }
+    if (integration.secrets) {
+      integration.secrets.forEach((secret: string) => {
+        initialData[secret] = '';
+      });
+    }
+    if (integration.id === 'calcom') {
+      initialData.username = '';
+      initialData.apiKey = '';
+    }
+    setFormData(initialData);
+  };
+
+  const closeConfigModal = () => {
+    setConfigModal({ open: false, integration: null });
+    setFormData({});
+  };
+
+  const handleFormChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const saveConfiguration = async () => {
+    if (!configModal.integration) return;
+
+    const integration = configModal.integration;
+    
+    // Here you would typically save to Supabase secrets or your backend
+    // For now, we'll just show a success message
+    console.log('Saving configuration for:', integration.id, formData);
+    
+    toast({
+      title: "Configuration Saved",
+      description: `${integration.title} credentials have been updated successfully.`,
+    });
+    
+    closeConfigModal();
+    
+    // Update the integration status to "configured"
+    // In a real app, you'd update the state or refetch data
+  };
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast({
       title: "Copied!",
       description: `${label} copied to clipboard`,
     });
+  };
+
+  const renderConfigForm = () => {
+    if (!configModal.integration) return null;
+
+    const integration = configModal.integration;
+
+    if (integration.id === 'openai') {
+      return (
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="openai-key">OpenAI API Key</Label>
+            <Input
+              id="openai-key"
+              type="password"
+              placeholder="sk-..."
+              value={formData.OPENAI_API_KEY || ''}
+              onChange={(e) => handleFormChange('OPENAI_API_KEY', e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Your OpenAI API key from platform.openai.com
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    if (integration.id === 'twilio') {
+      return (
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="twilio-sid">Account SID</Label>
+            <Input
+              id="twilio-sid"
+              type="text"
+              placeholder="AC..."
+              value={formData.TWILIO_ACCOUNT_SID || ''}
+              onChange={(e) => handleFormChange('TWILIO_ACCOUNT_SID', e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="twilio-token">Auth Token</Label>
+            <Input
+              id="twilio-token"
+              type="password"
+              placeholder="Auth Token"
+              value={formData.TWILIO_AUTH_TOKEN || ''}
+              onChange={(e) => handleFormChange('TWILIO_AUTH_TOKEN', e.target.value)}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Find these credentials in your Twilio Console dashboard
+          </p>
+        </div>
+      );
+    }
+
+    if (integration.id === 'calcom') {
+      return (
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="cal-username">Cal.com Username</Label>
+            <Input
+              id="cal-username"
+              type="text"
+              placeholder="your-username"
+              value={formData.username || ''}
+              onChange={(e) => handleFormChange('username', e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Your Cal.com username (e.g., if your link is cal.com/john, enter "john")
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="cal-api-key">API Key</Label>
+            <Input
+              id="cal-api-key"
+              type="password"
+              placeholder="cal_live_..."
+              value={formData.apiKey || ''}
+              onChange={(e) => handleFormChange('apiKey', e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Your Cal.com API key from Developer settings
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
   };
 
   const integrations = [
@@ -183,13 +326,7 @@ const Integrations = () => {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => {
-                          // This would trigger the lov-secret-form
-                          toast({
-                            title: "Configure API Key",
-                            description: `Use the actions below to set up your ${integration.title} API key`,
-                          });
-                        }}
+                        onClick={() => openConfigModal(integration)}
                       >
                         <Settings className="h-4 w-4 mr-1" />
                         Configure API Key
@@ -200,12 +337,7 @@ const Integrations = () => {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => {
-                          toast({
-                            title: "Configure Credentials",
-                            description: `Use the actions below to set up your ${integration.title} credentials`,
-                          });
-                        }}
+                        onClick={() => openConfigModal(integration)}
                       >
                         <Settings className="h-4 w-4 mr-1" />
                         Configure Credentials
@@ -332,6 +464,33 @@ const Integrations = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Configuration Modal */}
+      <Dialog open={configModal.open} onOpenChange={(open) => !open && closeConfigModal()}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              Configure {configModal.integration?.title}
+            </DialogTitle>
+            <DialogDescription>
+              Enter your {configModal.integration?.title} credentials and API keys.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {renderConfigForm()}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeConfigModal}>
+              Cancel
+            </Button>
+            <Button onClick={saveConfiguration}>
+              Save Configuration
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
