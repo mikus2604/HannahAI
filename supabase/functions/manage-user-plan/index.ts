@@ -38,13 +38,13 @@ serve(async (req) => {
     const adminUser = userData.user;
     if (!adminUser) throw new Error("User not authenticated");
     
-    // Check if user has super_user role
-    const { data: roles, error: roleError } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', adminUser.id);
+    // Check if user has super_user role using the RPC function
+    const { data: hasRole, error: roleError } = await supabaseAdmin.rpc('has_role', {
+      _user_id: adminUser.id,
+      _role: 'super_user'
+    });
     
-    if (roleError || !roles?.some(r => r.role === 'super_user')) {
+    if (roleError || !hasRole) {
       throw new Error("Access denied: Super user privileges required");
     }
     
