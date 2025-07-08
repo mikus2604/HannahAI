@@ -86,11 +86,15 @@ const SuperUserDashboard = () => {
   const fetchAnalytics = async () => {
     if (!user) return;
 
+    console.log('Fetching analytics for user:', user.id);
     setLoading(true);
     try {
       const { data: analyticsData, error } = await supabase.functions.invoke('admin-analytics');
       
+      console.log('Analytics response:', { analyticsData, error });
+      
       if (error) {
+        console.error('Analytics error details:', error);
         if (error.message?.includes('Access denied')) {
           setHasAccess(false);
           toast({
@@ -109,7 +113,7 @@ const SuperUserDashboard = () => {
       console.error('Error fetching analytics:', error);
       toast({
         title: "Error",
-        description: "Failed to load admin analytics",
+        description: `Failed to load admin analytics: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {

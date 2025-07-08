@@ -118,11 +118,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfile(data as Profile);
 
       // Fetch user roles
-      const { data: roles } = await supabase
+      const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId);
 
+      console.log('Fetched user roles:', { userId, roles, rolesError });
       setUserRoles(roles?.map(r => r.role) || []);
     } catch (error) {
       console.error('Error fetching profile:', error);
