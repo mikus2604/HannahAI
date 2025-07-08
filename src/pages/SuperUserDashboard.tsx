@@ -27,7 +27,8 @@ import {
   Calendar,
   BarChart3,
   PieChart,
-  Zap
+  Zap,
+  TestTube
 } from "lucide-react";
 
 interface AdminAnalytics {
@@ -82,6 +83,73 @@ const SuperUserDashboard = () => {
   const [data, setData] = useState<AdminAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  const [testingStates, setTestingStates] = useState<Record<string, boolean>>({});
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
+
+  const testAPI = async (apiName: string, testFunction: () => Promise<any>) => {
+    setTestingStates(prev => ({ ...prev, [apiName]: true }));
+    
+    try {
+      const result = await testFunction();
+      setTestResults(prev => ({ 
+        ...prev, 
+        [apiName]: { 
+          success: result.success, 
+          message: result.message || result.error 
+        } 
+      }));
+      
+      toast({
+        title: result.success ? "Test Successful" : "Test Failed",
+        description: result.message || result.error,
+        variant: result.success ? "default" : "destructive",
+      });
+    } catch (error) {
+      setTestResults(prev => ({ 
+        ...prev, 
+        [apiName]: { 
+          success: false, 
+          message: "Connection test failed" 
+        } 
+      }));
+      
+      toast({
+        title: "Test Failed",
+        description: "Could not connect to test the API",
+        variant: "destructive",
+      });
+    } finally {
+      setTestingStates(prev => ({ ...prev, [apiName]: false }));
+    }
+  };
+
+  const testOpenAI = () => testAPI('openai', async () => {
+    const { data, error } = await supabase.functions.invoke('test-openai');
+    if (error) throw error;
+    return data;
+  });
+
+  const testTwilio = () => testAPI('twilio', async () => {
+    const { data, error } = await supabase.functions.invoke('test-twilio');
+    if (error) throw error;
+    return data;
+  });
+
+  const getTestResult = (id: string) => {
+    const result = testResults[id];
+    if (!result) return null;
+    
+    return (
+      <div className={`flex items-center gap-2 mt-2 ${result.success ? 'text-green-600' : 'text-red-600'}`}>
+        {result.success ? (
+          <CheckCircle className="h-4 w-4" />
+        ) : (
+          <XCircle className="h-4 w-4" />
+        )}
+        <span className="text-sm">{result.message}</span>
+      </div>
+    );
+  };
 
   const fetchAnalytics = async () => {
     if (!user) return;
@@ -538,12 +606,22 @@ const SuperUserDashboard = () => {
                       <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={testOpenAI}
+                        disabled={testingStates['openai']}
+                      >
+                        <TestTube className="h-4 w-4 mr-1" />
+                        {testingStates['openai'] ? 'Testing...' : 'Test Connection'}
+                      </Button>
                       <Button variant="outline" size="sm" asChild>
                         <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">
                           View API Keys
                         </a>
                       </Button>
                     </div>
+                    {getTestResult('openai')}
                   </div>
 
                   {/* Twilio */}
@@ -559,12 +637,22 @@ const SuperUserDashboard = () => {
                       <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={testTwilio}
+                        disabled={testingStates['twilio']}
+                      >
+                        <TestTube className="h-4 w-4 mr-1" />
+                        {testingStates['twilio'] ? 'Testing...' : 'Test Connection'}
+                      </Button>
                       <Button variant="outline" size="sm" asChild>
                         <a href="https://console.twilio.com/project/api-keys" target="_blank" rel="noopener noreferrer">
                           Twilio Console
                         </a>
                       </Button>
                     </div>
+                    {getTestResult('twilio')}
                   </div>
 
                   {/* Stripe */}
@@ -580,6 +668,10 @@ const SuperUserDashboard = () => {
                       <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" disabled>
+                        <TestTube className="h-4 w-4 mr-1" />
+                        No Test Available
+                      </Button>
                       <Button variant="outline" size="sm" asChild>
                         <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer">
                           Stripe Dashboard
