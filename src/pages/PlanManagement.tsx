@@ -21,6 +21,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { detectUserCurrency, convertPrice, formatPrice, getPriceForCheckout, type CurrencyCode } from "@/lib/currency";
 import SubscriptionTester from "@/components/SubscriptionTester";
 import GrantSuperUser from "@/components/GrantSuperUser";
 
@@ -34,17 +35,27 @@ const PlanManagement = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [userCurrency, setUserCurrency] = useState<CurrencyCode>('USD');
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo>({
     subscribed: false,
     subscription_tier: null,
     subscription_end: null
   });
 
+  // Function to get display price based on user currency
+  const getDisplayPrice = (plan: any) => {
+    if (plan.id === 'free') return '$0';
+    if (plan.id === 'enterprise') return 'Custom';
+    if (!plan.stripePrice) return 'N/A';
+    
+    return formatPrice(convertPrice(plan.stripePrice, userCurrency), userCurrency);
+  };
+
   const plans = [
     {
       id: 'free',
       name: 'Free',
-      price: '$0',
+      basePrice: 0,
       period: 'forever',
       description: 'Perfect for getting started',
       features: [
@@ -68,7 +79,7 @@ const PlanManagement = () => {
     {
       id: 'premium',
       name: 'Premium',
-      price: '$24.95',
+      basePrice: 2495, // USD cents
       period: 'per month',
       description: 'Great for small businesses',
       features: [
@@ -84,13 +95,13 @@ const PlanManagement = () => {
       ],
       buttonText: 'Upgrade to Premium',
       popular: true,
-      stripePrice: 2495, // $24.95 in cents
+      stripePrice: 2495, // $24.95 in USD cents
       color: 'border-primary'
     },
     {
       id: 'premium_plus',
       name: 'Premium+',
-      price: '$49.95',
+      basePrice: 4995, // USD cents
       period: 'per month', 
       description: 'Perfect for growing businesses',
       features: [
@@ -107,13 +118,13 @@ const PlanManagement = () => {
       ],
       buttonText: 'Upgrade to Premium+',
       popular: false,
-      stripePrice: 4995, // $49.95 in cents
+      stripePrice: 4995, // $49.95 in USD cents
       color: 'border-purple-500'
     },
     {
       id: 'enterprise',
       name: 'Enterprise',
-      price: 'Custom',
+      basePrice: null,
       period: 'pricing',
       description: 'Tailored for large organizations',
       features: [
@@ -187,10 +198,14 @@ const PlanManagement = () => {
 
     setIsLoading(true);
     try {
+      // Get the correct price and currency for checkout
+      const checkoutData = getPriceForCheckout(plan.stripePrice, userCurrency);
+      
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { 
-          priceAmount: plan.stripePrice,
-          planName: plan.name
+          priceAmount: checkoutData.amount,
+          planName: plan.name,
+          currency: checkoutData.currency
         }
       });
 
@@ -269,6 +284,21 @@ const PlanManagement = () => {
     });
   };
 
+  // Detect user currency on page load
+  useEffect(() => {
+    const initializeCurrency = async () => {
+      try {
+        const currency = await detectUserCurrency();
+        setUserCurrency(currency);
+      } catch (error) {
+        console.warn('Failed to detect currency, using USD as default:', error);
+        setUserCurrency('USD');
+      }
+    };
+    
+    initializeCurrency();
+  }, []);
+
   useEffect(() => {
     if (user) {
       checkSubscription();
@@ -304,9 +334,14 @@ const PlanManagement = () => {
 
   return (
     <div className="flex-1 space-y-6 p-6">
-      <div>
-        <h1 className="text-3xl font-bold">Plan Management</h1>
-        <p className="text-muted-foreground">Choose the perfect plan for your business needs</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Plan Management</h1>
+          <p className="text-muted-foreground">Choose the perfect plan for your business needs</p>
+        </div>
+        <Badge variant="outline" className="flex items-center gap-1">
+          <span className="text-xs">Prices in {userCurrency}</span>
+        </Badge>
       </div>
 
       {/* Current Plan Status */}
@@ -401,7 +436,7 @@ const PlanManagement = () => {
                 <CardTitle className="text-xl">{plan.name}</CardTitle>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold">
-                    {plan.price}
+                    {getDisplayPrice(plan)}
                     {plan.period !== 'forever' && plan.period !== 'pricing' && (
                       <span className="text-sm font-normal text-muted-foreground">/{plan.period.split(' ')[1]}</span>
                     )}

@@ -1,5 +1,4 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -30,15 +29,7 @@ serve(async (req) => {
     logStep("Function started");
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) {
-      logStep("ERROR: STRIPE_SECRET_KEY is not set");
-      return new Response(JSON.stringify({ 
-        error: "Stripe integration not configured. Please contact support." 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      });
-    }
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
     logStep("Stripe key verified");
 
     const authHeader = req.headers.get("Authorization");
@@ -96,14 +87,22 @@ serve(async (req) => {
       const price = await stripe.prices.retrieve(priceId);
       const amount = price.unit_amount || 0;
       
-      if (amount <= 2500) {  // $25 or less
+      // Convert to USD if needed for tier detection
+      let usdAmount = amount;
+      if (price.currency === 'gbp') {
+        usdAmount = Math.round(amount / 0.79); // Convert GBP to USD
+      }
+      
+      if (usdAmount <= 1000) {
+        subscriptionTier = "Basic";
+      } else if (usdAmount <= 2500) {
         subscriptionTier = "Premium";
-      } else if (amount <= 5000) {  // $50 or less
+      } else if (usdAmount <= 5000) {
         subscriptionTier = "Premium+";
       } else {
         subscriptionTier = "Enterprise";
       }
-      logStep("Determined subscription tier", { priceId, amount, subscriptionTier });
+      logStep("Determined subscription tier", { priceId, amount, currency: price.currency, subscriptionTier });
     } else {
       logStep("No active subscription found");
     }
