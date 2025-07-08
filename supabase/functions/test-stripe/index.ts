@@ -25,12 +25,11 @@ serve(async (req) => {
       );
     }
 
-    // Test Stripe API by fetching account info
-    const response = await fetch('https://api.stripe.com/v1/account', {
+    // Test Stripe API by listing customers (simpler endpoint that doesn't require special permissions)
+    const response = await fetch('https://api.stripe.com/v1/customers?limit=1', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${stripeSecretKey}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
       },
     });
 
@@ -47,12 +46,12 @@ serve(async (req) => {
       );
     }
 
-    const accountData = await response.json();
+    const customersData = await response.json();
     
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Stripe connection successful! Account: ${accountData.display_name || accountData.id}` 
+        message: `Stripe connection successful! Found ${customersData.data.length} customers in your account.` 
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
