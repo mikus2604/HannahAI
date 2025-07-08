@@ -164,7 +164,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const enable2FA = async () => {
     try {
       const { data, error } = await supabase.auth.mfa.enroll({
-        factorType: 'totp'
+        factorType: 'totp',
+        friendlyName: 'Authenticator App'
       });
 
       if (error) throw error;
