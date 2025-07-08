@@ -60,6 +60,7 @@ export type Database = {
           ended_at: string | null
           from_number: string
           id: string
+          recording_expires_at: string | null
           recording_url: string | null
           started_at: string
           to_number: string
@@ -73,6 +74,7 @@ export type Database = {
           ended_at?: string | null
           from_number: string
           id?: string
+          recording_expires_at?: string | null
           recording_url?: string | null
           started_at?: string
           to_number: string
@@ -86,11 +88,45 @@ export type Database = {
           ended_at?: string | null
           from_number?: string
           id?: string
+          recording_expires_at?: string | null
           recording_url?: string | null
           started_at?: string
           to_number?: string
           twilio_call_sid?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      email_notifications: {
+        Row: {
+          call_ids: string[]
+          email_content: string
+          email_subject: string
+          id: string
+          notification_type: string
+          sent_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          call_ids?: string[]
+          email_content: string
+          email_subject: string
+          id?: string
+          notification_type: string
+          sent_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          call_ids?: string[]
+          email_content?: string
+          email_subject?: string
+          id?: string
+          notification_type?: string
+          sent_at?: string
+          status?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -131,6 +167,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_preferences: {
+        Row: {
+          created_at: string
+          email_notifications: boolean
+          id: string
+          notification_frequency: string
+          recording_storage_duration: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_notifications?: boolean
+          id?: string
+          notification_frequency?: string
+          recording_storage_duration?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_notifications?: boolean
+          id?: string
+          notification_frequency?: string
+          recording_storage_duration?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {

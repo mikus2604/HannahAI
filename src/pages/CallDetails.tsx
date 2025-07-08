@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Phone, MessageSquare, Clock, User, RefreshCw, BarChart3 } from "lucide-react";
+import { Phone, MessageSquare, Clock, User, RefreshCw, BarChart3, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from "recharts";
@@ -383,6 +383,56 @@ const CallDetails = () => {
                   No calls yet
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Recording Storage Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Call Recording Storage
+              </CardTitle>
+              <CardDescription>
+                Information about call recording storage policy
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <Clock className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-blue-900">Recording Retention Policy</h4>
+                      <p className="text-sm text-blue-700 mt-1">
+                        Call recordings are automatically stored and managed based on your plan:
+                      </p>
+                      <ul className="text-sm text-blue-700 mt-2 space-y-1">
+                        <li>• <strong>1 week storage:</strong> Included with your plan (Free)</li>
+                        <li>• <strong>1 month storage:</strong> Premium Plan required</li>
+                        <li>• <strong>6 months storage:</strong> Premium Plan required</li>
+                      </ul>
+                      <p className="text-xs text-blue-600 mt-3">
+                        Recordings are automatically deleted after the selected retention period. 
+                        You can modify your storage preferences in the Settings page.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600">Current Plan</div>
+                    <div className="text-lg font-semibold">1 Week Storage</div>
+                    <div className="text-xs text-green-600">✓ Active</div>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="text-sm font-medium text-gray-600">Next Cleanup</div>
+                    <div className="text-lg font-semibold">Automated</div>
+                    <div className="text-xs text-gray-500">Daily at 2:00 AM UTC</div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 

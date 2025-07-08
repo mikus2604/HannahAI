@@ -8,3 +8,21 @@ verify_jwt = false
 
 [functions.get-call-logs]
 verify_jwt = false
+
+[functions.test-openai]
+verify_jwt = false
+
+[functions.test-twilio]
+verify_jwt = false
+
+[functions.test-calcom]
+verify_jwt = false
+
+[functions.send-call-notification]
+verify_jwt = false
+
+[functions.cleanup-recordings]
+verify_jwt = false
+
+[functions.send-digest-emails]
+verify_jwt = false
