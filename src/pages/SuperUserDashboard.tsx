@@ -135,6 +135,12 @@ const SuperUserDashboard = () => {
     return data;
   });
 
+  const testStripe = () => testAPI('stripe', async () => {
+    const { data, error } = await supabase.functions.invoke('test-stripe');
+    if (error) throw error;
+    return data;
+  });
+
   const getTestResult = (id: string) => {
     const result = testResults[id];
     if (!result) return null;
@@ -668,9 +674,14 @@ const SuperUserDashboard = () => {
                       <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <Button variant="outline" size="sm" disabled>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={testStripe}
+                        disabled={testingStates['stripe']}
+                      >
                         <TestTube className="h-4 w-4 mr-1" />
-                        No Test Available
+                        {testingStates['stripe'] ? 'Testing...' : 'Test Connection'}
                       </Button>
                       <Button variant="outline" size="sm" asChild>
                         <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer">
@@ -678,6 +689,7 @@ const SuperUserDashboard = () => {
                         </a>
                       </Button>
                     </div>
+                    {getTestResult('stripe')}
                   </div>
                 </div>
               </CardContent>
