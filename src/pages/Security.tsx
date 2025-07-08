@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Shield, Smartphone, Key, Copy, Check, AlertTriangle, Eye, EyeOff } from "lucide-react";
+import { Shield, Smartphone, Key, Copy, Check, AlertTriangle, Eye, EyeOff, ShieldCheck, ShieldOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -267,13 +267,40 @@ const Security = () => {
                     You'll need your authenticator app to sign in.
                   </AlertDescription>
                 </Alert>
+
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-full bg-green-100 p-2">
+                      <ShieldCheck className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-green-900 mb-1">2FA Active</h4>
+                      <p className="text-sm text-green-800 mb-2">
+                        Your account is secured with TOTP (Time-based One-Time Password) authentication.
+                      </p>
+                      <div className="text-xs text-green-700">
+                        <strong>Authenticator App:</strong> Any TOTP-compatible app (Google Authenticator, Microsoft Authenticator, Authy, 1Password, etc.)
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-2">Security Benefits</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• Protects against password-only attacks</li>
+                    <li>• Prevents unauthorized access even if password is compromised</li>
+                    <li>• Secures your call recordings and sensitive data</li>
+                    <li>• Industry-standard security practice</li>
+                  </ul>
+                </div>
                 
                 <Button 
                   variant="destructive" 
                   onClick={() => setShowDisable2FA(true)}
                   disabled={isLoading}
                 >
-                  <Smartphone className="h-4 w-4 mr-2" />
+                  <ShieldOff className="h-4 w-4 mr-2" />
                   Disable 2FA
                 </Button>
               </div>
