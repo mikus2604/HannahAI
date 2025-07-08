@@ -35,6 +35,7 @@ interface AuthContextType {
   verify2FA: (token: string, secret: string) => Promise<{ error: Error | null }>;
   disable2FA: () => Promise<{ error: Error | null }>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
+  checkSubscriptionStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -65,9 +66,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Defer profile fetch to avoid deadlock
-          setTimeout(() => {
-            fetchUserProfile(session.user.id);
+          // Defer profile fetch and subscription check to avoid deadlock
+          setTimeout(async () => {
+            await fetchUserProfile(session.user.id);
+            // Check subscription status on login
+            if (event === 'SIGNED_IN') {
+              await checkSubscriptionStatus();
+            }
           }, 0);
         } else {
           setProfile(null);
@@ -80,12 +85,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchUserProfile(session.user.id);
+        await fetchUserProfile(session.user.id);
+        await checkSubscriptionStatus();
       }
       setLoading(false);
     });
@@ -384,6 +390,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const checkSubscriptionStatus = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription');
+      
+      if (error) {
+        console.error('Subscription check error:', error);
+        return;
+      }
+
+      if (data && user) {
+        // Update profile with subscription status
+        const planType = data.subscribed ? 
+          (data.subscription_tier === 'Premium' ? 'premium' :
+           data.subscription_tier === 'Premium+' ? 'premium_plus' :
+           data.subscription_tier === 'Enterprise' ? 'enterprise' : 'free') : 'free';
+        
+        const planExpiry = data.subscription_end ? new Date(data.subscription_end).toISOString() : null;
+        
+        await supabase
+          .from('profiles')
+          .update({ 
+            plan_type: planType,
+            plan_expires_at: planExpiry
+          })
+          .eq('user_id', user.id);
+        
+        // Refresh profile to reflect changes
+        await fetchUserProfile(user.id);
+      }
+    } catch (error) {
+      console.error('Subscription check failed:', error);
+    }
+  };
+
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user) {
       return { error: new Error('User not authenticated') };
@@ -421,6 +461,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     verify2FA,
     disable2FA,
     updateProfile,
+    checkSubscriptionStatus,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

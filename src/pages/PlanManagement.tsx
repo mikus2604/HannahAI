@@ -21,6 +21,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import SubscriptionTester from "@/components/SubscriptionTester";
 
 interface SubscriptionInfo {
   subscribed: boolean;
@@ -271,6 +272,31 @@ const PlanManagement = () => {
     if (user) {
       checkSubscription();
     }
+    
+    // Check for success/cancel URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+      toast({
+        title: "Payment Successful!",
+        description: "Your subscription has been activated. It may take a few minutes to reflect in your account.",
+      });
+      // Refresh subscription status after successful payment
+      setTimeout(() => {
+        checkSubscription();
+      }, 2000);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    if (urlParams.get('canceled') === 'true') {
+      toast({
+        title: "Payment Canceled",
+        description: "Your payment was canceled. You can try again anytime.",
+        variant: "destructive",
+      });
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, [user]);
 
   const currentPlan = getCurrentPlan();
@@ -422,6 +448,14 @@ const PlanManagement = () => {
           Need help choosing the right plan? <Button variant="link" className="p-0 h-auto">Contact our sales team</Button> for personalized recommendations.
         </AlertDescription>
       </Alert>
+
+      {/* Subscription Integration Tester */}
+      {user && (
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold mb-4">Integration Testing</h2>
+          <SubscriptionTester />
+        </div>
+      )}
     </div>
   );
 };
