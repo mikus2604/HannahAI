@@ -61,64 +61,93 @@ serve(async (req) => {
     let stripeData = null;
     
     if (stripeKey) {
-      const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
-      
-      // Get subscription data from Stripe
-      const subscriptions = await stripe.subscriptions.list({ 
-        limit: 100,
-        status: 'active'
-      });
-
-      const customers = await stripe.customers.list({ limit: 100 });
-      
-      // Get payment data
-      const charges = await stripe.charges.list({ 
-        limit: 100,
-        created: {
-          gte: Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000) // Last 30 days
+      try {
+        const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+        
+        // Try to get basic Stripe data with limited permissions
+        let subscriptions;
+        let customers;
+        let charges = { data: [] };
+        
+        try {
+          subscriptions = await stripe.subscriptions.list({ 
+            limit: 100,
+            status: 'active'
+          });
+          logStep("Stripe subscriptions retrieved", { count: subscriptions.data.length });
+        } catch (subError) {
+          logStep("Stripe subscriptions error (continuing)", { error: subError });
+          subscriptions = { data: [] };
         }
-      });
 
-      // Calculate revenue
-      const totalRevenue = charges.data
-        .filter(charge => charge.status === 'succeeded')
-        .reduce((sum, charge) => sum + charge.amount, 0);
-
-      const monthlyRevenue = charges.data
-        .filter(charge => 
-          charge.status === 'succeeded' && 
-          charge.created > Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000)
-        )
-        .reduce((sum, charge) => sum + charge.amount, 0);
-
-      // Analyze subscription tiers
-      const subscriptionTiers = subscriptions.data.reduce((acc: any, sub) => {
-        const price = sub.items.data[0]?.price;
-        if (price) {
-          const amount = price.unit_amount || 0;
-          let tier = 'unknown';
-          
-          if (amount <= 2500) tier = 'premium';
-          else if (amount <= 5000) tier = 'premium_plus';
-          else tier = 'enterprise';
-          
-          acc[tier] = (acc[tier] || 0) + 1;
+        try {
+          customers = await stripe.customers.list({ limit: 100 });
+          logStep("Stripe customers retrieved", { count: customers.data.length });
+        } catch (custError) {
+          logStep("Stripe customers error (continuing)", { error: custError });
+          customers = { data: [] };
         }
-        return acc;
-      }, {});
+        
+        // Skip charges API if we don't have permissions - this is what was causing the error
+        try {
+          charges = await stripe.charges.list({ 
+            limit: 100,
+            created: {
+              gte: Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000) // Last 30 days
+            }
+          });
+          logStep("Stripe charges retrieved", { count: charges.data.length });
+        } catch (chargeError) {
+          logStep("Stripe charges error (API key lacks permissions - using fallback)", { error: chargeError });
+          charges = { data: [] };
+        }
 
-      stripeData = {
-        totalCustomers: customers.data.length,
-        activeSubscriptions: subscriptions.data.length,
-        subscriptionTiers,
-        totalRevenue: totalRevenue / 100, // Convert from cents
-        monthlyRevenue: monthlyRevenue / 100,
-        averageRevenuePerUser: customers.data.length > 0 ? (totalRevenue / 100) / customers.data.length : 0,
-        churnRate: 0, // Would need historical data to calculate properly
-        lastUpdated: new Date().toISOString()
-      };
+        // Calculate revenue (will be 0 if charges API is not accessible)
+        const totalRevenue = charges.data
+          .filter(charge => charge.status === 'succeeded')
+          .reduce((sum, charge) => sum + charge.amount, 0);
 
-      logStep("Stripe data retrieved", stripeData);
+        const monthlyRevenue = charges.data
+          .filter(charge => 
+            charge.status === 'succeeded' && 
+            charge.created > Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000)
+          )
+          .reduce((sum, charge) => sum + charge.amount, 0);
+
+        // Analyze subscription tiers
+        const subscriptionTiers = subscriptions.data.reduce((acc: any, sub) => {
+          const price = sub.items.data[0]?.price;
+          if (price) {
+            const amount = price.unit_amount || 0;
+            let tier = 'unknown';
+            
+            if (amount <= 2500) tier = 'premium';
+            else if (amount <= 5000) tier = 'premium_plus';
+            else tier = 'enterprise';
+            
+            acc[tier] = (acc[tier] || 0) + 1;
+          }
+          return acc;
+        }, {});
+
+        stripeData = {
+          totalCustomers: customers.data.length,
+          activeSubscriptions: subscriptions.data.length,
+          subscriptionTiers,
+          totalRevenue: totalRevenue / 100, // Convert from cents
+          monthlyRevenue: monthlyRevenue / 100,
+          averageRevenuePerUser: customers.data.length > 0 ? (totalRevenue / 100) / customers.data.length : 0,
+          churnRate: 0, // Would need historical data to calculate properly
+          lastUpdated: new Date().toISOString(),
+          hasChargePermissions: charges.data.length > 0 || charges.data === undefined
+        };
+
+        logStep("Stripe data compiled", stripeData);
+        
+      } catch (stripeError) {
+        logStep("Stripe API error (continuing without Stripe data)", { error: stripeError });
+        stripeData = null;
+      }
     }
 
     // Get recent users and activity
