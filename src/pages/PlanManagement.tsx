@@ -49,6 +49,7 @@ const PlanManagement = () => {
         '100 calls per month',
         '1 custom greeting message',
         'Basic call recordings',
+        '7-day recording storage',
         'Email support',
         'Standard security'
       ],
@@ -72,10 +73,12 @@ const PlanManagement = () => {
         'Unlimited calls',
         'Unlimited custom greetings',
         'Advanced call recordings',
+        '30-day recording storage',
         'Priority email support',
         'Advanced security features',
         'Call analytics dashboard',
-        'Custom hold music'
+        'Custom hold music',
+        'White-label email notifications'
       ],
       buttonText: 'Upgrade to Premium',
       popular: true,
@@ -93,9 +96,11 @@ const PlanManagement = () => {
         'Multi-language support',
         'Advanced AI responses',
         'Call forwarding & routing',
+        '90-day recording storage',
         'Integration with CRM systems',
         'Real-time transcription',
-        'Custom API access',
+        'White-label SMS notifications',
+        'White-label email notifications',
         'Phone support'
       ],
       buttonText: 'Upgrade to Premium+',
@@ -113,8 +118,11 @@ const PlanManagement = () => {
         'Everything in Premium+',
         'Dedicated account manager',
         'Custom integrations',
+        'Unlimited recording storage',
         'On-premise deployment options',
         'Advanced compliance features',
+        'Complete white-label solution',
+        'Custom branding & notifications',
         'SLA guarantees',
         '24/7 priority support',
         'Custom training & onboarding'
@@ -443,6 +451,13 @@ const PlanManagement = () => {
                   <td className="text-center p-2">Unlimited</td>
                 </tr>
                 <tr className="border-b">
+                  <td className="p-2">Recording Storage</td>
+                  <td className="text-center p-2">7 days</td>
+                  <td className="text-center p-2">30 days</td>
+                  <td className="text-center p-2">90 days</td>
+                  <td className="text-center p-2">Unlimited</td>
+                </tr>
+                <tr className="border-b">
                   <td className="p-2">Multi-language Support</td>
                   <td className="text-center p-2">-</td>
                   <td className="text-center p-2">-</td>
@@ -450,11 +465,11 @@ const PlanManagement = () => {
                   <td className="text-center p-2">✓</td>
                 </tr>
                 <tr className="border-b">
-                  <td className="p-2">API Access</td>
+                  <td className="p-2">White-label Notifications</td>
                   <td className="text-center p-2">-</td>
-                  <td className="text-center p-2">-</td>
-                  <td className="text-center p-2">✓</td>
-                  <td className="text-center p-2">✓</td>
+                  <td className="text-center p-2">Email</td>
+                  <td className="text-center p-2">Email & SMS</td>
+                  <td className="text-center p-2">Complete</td>
                 </tr>
                 <tr className="border-b">
                   <td className="p-2">Priority Support</td>
