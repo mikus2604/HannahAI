@@ -164,9 +164,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const enable2FA = async () => {
     try {
+      // First, clean up any existing unverified factors to avoid conflicts
+      const { data: existingFactors } = await supabase.auth.mfa.listFactors();
+      
+      if (existingFactors?.totp) {
+        const unverifiedFactors = existingFactors.totp.filter(factor => factor.status === 'unverified');
+        for (const factor of unverifiedFactors) {
+          await supabase.auth.mfa.unenroll({ factorId: factor.id });
+        }
+      }
+
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
-        friendlyName: 'Authenticator App'
+        friendlyName: `Authenticator App ${Date.now()}`
       });
 
       if (error) throw error;
@@ -192,7 +202,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (factorsError) throw factorsError;
       
-      const unverifiedFactor = factors.totp.find(factor => factor.status === 'unverified');
+      // Find the most recent unverified factor
+      const unverifiedFactor = factors.totp
+        .filter(factor => factor.status === 'unverified')
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
       
       if (!unverifiedFactor) {
         throw new Error('No unverified factor found. Please start the setup process again.');
