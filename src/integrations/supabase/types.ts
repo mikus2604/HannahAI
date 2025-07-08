@@ -133,6 +133,36 @@ export type Database = {
         }
         Relationships: []
       }
+      greeting_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          message: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          message: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          message?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -240,12 +270,60 @@ export type Database = {
         }
         Relationships: []
       }
+      user_usage: {
+        Row: {
+          api_requests_count: number
+          calls_count: number
+          created_at: string
+          greeting_messages_count: number
+          id: string
+          month_year: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_requests_count?: number
+          calls_count?: number
+          created_at?: string
+          greeting_messages_count?: number
+          id?: string
+          month_year: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_requests_count?: number
+          calls_count?: number
+          created_at?: string
+          greeting_messages_count?: number
+          id?: string
+          month_year?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_user_add_greeting: {
+        Args: { user_uuid: string }
+        Returns: boolean
+      }
+      can_user_make_call: {
+        Args: { user_uuid: string }
+        Returns: boolean
+      }
+      get_user_plan_type: {
+        Args: { user_uuid: string }
+        Returns: string
+      }
+      increment_user_calls: {
+        Args: { user_uuid: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

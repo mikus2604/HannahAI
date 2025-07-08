@@ -9,9 +9,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Settings, Phone, MessageSquare, Calendar, Users, Mail, Clock, Shield, X, Crown } from "lucide-react";
+import { Settings, Phone, MessageSquare, Calendar, Users, Mail, Clock, Shield, X, Crown, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePlanEnforcement } from "@/hooks/usePlanEnforcement";
+import { supabase } from "@/integrations/supabase/client";
+import UsageOverview from "@/components/UsageOverview";
 
 const formSchema = z.object({
   assistantName: z.string().min(1, "Assistant name is required"),
@@ -33,10 +37,23 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+interface GreetingMessage {
+  id: string;
+  title: string;
+  message: string;
+  is_active: boolean;
+}
+
 const AssistantSettings = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { planLimits, showUpgradePrompt, usage } = usePlanEnforcement();
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [pendingRecordingValue, setPendingRecordingValue] = useState<string>("");
+  const [greetingMessages, setGreetingMessages] = useState<GreetingMessage[]>([]);
+  const [showGreetingForm, setShowGreetingForm] = useState(false);
+  const [newGreeting, setNewGreeting] = useState({ title: "", message: "" });
+  const [loadingGreetings, setLoadingGreetings] = useState(true);
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -374,6 +391,8 @@ const AssistantSettings = () => {
             </CardContent>
           </Card>
 
+          {/* Usage Overview */}
+          <UsageOverview />
 
           <div className="flex justify-end">
             <Button type="submit" size="lg">
