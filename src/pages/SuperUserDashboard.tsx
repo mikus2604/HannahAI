@@ -33,6 +33,7 @@ import {
   Settings,
   Wrench
 } from "lucide-react";
+import GrantSuperUser from "@/components/GrantSuperUser";
 
 interface AdminAnalytics {
   analytics: {
@@ -343,6 +344,7 @@ const SuperUserDashboard = () => {
           <TabsTrigger value="revenue">Revenue</TabsTrigger>
           <TabsTrigger value="calls">Calls</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
+          <TabsTrigger value="admin">Admin</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -586,6 +588,23 @@ const SuperUserDashboard = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="admin" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                User Role Management
+              </CardTitle>
+              <CardDescription>
+                Grant super user access to trusted administrators
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <GrantSuperUser />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-4">
