@@ -76,7 +76,7 @@ const Security = () => {
 
     setIsLoading(true);
     try {
-      const { error } = await verify2FA(verificationCode);
+      const { error } = await verify2FA(verificationCode, secret);
       
       if (error) {
         toast({

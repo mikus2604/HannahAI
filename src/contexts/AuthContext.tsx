@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import * as OTPAuth from 'otpauth';
+import QRCode from 'qrcode';
 
 interface Profile {
   id: string;
@@ -13,6 +15,7 @@ interface Profile {
   plan_expires_at: string | null;
   two_factor_enabled: boolean;
   authenticator_app: string | null;
+  totp_secret: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -26,7 +29,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   enable2FA: () => Promise<{ qrCode: string; secret: string; error: Error | null }>;
-  verify2FA: (token: string) => Promise<{ error: Error | null }>;
+  verify2FA: (token: string, secret: string) => Promise<{ error: Error | null }>;
   disable2FA: () => Promise<{ error: Error | null }>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
 }
@@ -164,16 +167,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const enable2FA = async () => {
     try {
-      const { data, error } = await supabase.auth.mfa.enroll({
-        factorType: 'totp',
-        friendlyName: 'Authenticator App'
+      if (!user) {
+        return { qrCode: '', secret: '', error: new Error('User not authenticated') };
+      }
+
+      // Generate a random secret
+      const secret = new OTPAuth.Secret({ size: 20 });
+      const secretBase32 = secret.base32;
+
+      // Create TOTP instance
+      const totp = new OTPAuth.TOTP({
+        issuer: 'Voice Assistant',
+        label: user.email || 'User',
+        algorithm: 'SHA1',
+        digits: 6,
+        period: 30,
+        secret: secretBase32,
       });
 
-      if (error) throw error;
+      // Generate QR code
+      const qrCodeDataURL = await QRCode.toDataURL(totp.toString());
 
       return { 
-        qrCode: data.totp.qr_code, 
-        secret: data.totp.secret, 
+        qrCode: qrCodeDataURL, 
+        secret: secretBase32, 
         error: null 
       };
     } catch (error) {
@@ -185,24 +202,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const verify2FA = async (token: string) => {
+  const verify2FA = async (token: string, secret: string) => {
     try {
-      const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
-      
-      if (factorsError) throw factorsError;
-      
-      const unverifiedFactor = factors.totp.find(factor => factor.status === 'unverified');
-      
-      if (!unverifiedFactor) {
-        throw new Error('No unverified factor found. Please start the setup process again.');
+      if (!user) {
+        return { error: new Error('User not authenticated') };
       }
 
-      const { data, error } = await supabase.auth.mfa.challengeAndVerify({
-        factorId: unverifiedFactor.id,
-        code: token
+      // Create TOTP instance with the secret
+      const totp = new OTPAuth.TOTP({
+        issuer: 'Voice Assistant',
+        label: user.email || 'User',
+        algorithm: 'SHA1',
+        digits: 6,
+        period: 30,
+        secret: secret,
       });
 
-      if (error) throw error;
+      // Verify the token with some time tolerance
+      const delta = totp.validate({ token, window: 2 });
+      
+      if (delta === null) {
+        return { error: new Error('Invalid verification code') };
+      }
+
+      // Save the secret to the user's profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          two_factor_enabled: true,
+          totp_secret: secret
+        })
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        return { error: updateError };
+      }
+
+      // Refresh profile data
+      await fetchUserProfile(user.id);
 
       return { error: null };
     } catch (error) {
@@ -212,17 +249,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const disable2FA = async () => {
     try {
-      const factors = session?.user?.factors || [];
-      if (factors.length > 0) {
-        const { error } = await supabase.auth.mfa.unenroll({
-          factorId: factors[0].id
-        });
-
-        if (error) throw error;
-
-        // Update profile to reflect 2FA status
-        await updateProfile({ two_factor_enabled: false });
+      if (!user) {
+        return { error: new Error('User not authenticated') };
       }
+
+      // Remove the secret from the user's profile
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          two_factor_enabled: false,
+          totp_secret: null,
+          authenticator_app: null
+        })
+        .eq('user_id', user.id);
+
+      if (error) {
+        return { error };
+      }
+
+      // Refresh profile data
+      await fetchUserProfile(user.id);
 
       return { error: null };
     } catch (error) {

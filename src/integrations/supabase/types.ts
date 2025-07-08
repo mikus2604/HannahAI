@@ -173,6 +173,7 @@ export type Database = {
           phone_number: string | null
           plan_expires_at: string | null
           plan_type: string
+          totp_secret: string | null
           two_factor_enabled: boolean
           updated_at: string
           user_id: string
@@ -186,6 +187,7 @@ export type Database = {
           phone_number?: string | null
           plan_expires_at?: string | null
           plan_type?: string
+          totp_secret?: string | null
           two_factor_enabled?: boolean
           updated_at?: string
           user_id: string
@@ -199,6 +201,7 @@ export type Database = {
           phone_number?: string | null
           plan_expires_at?: string | null
           plan_type?: string
+          totp_secret?: string | null
           two_factor_enabled?: boolean
           updated_at?: string
           user_id?: string
