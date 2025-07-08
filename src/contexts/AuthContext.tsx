@@ -11,7 +11,7 @@ interface Profile {
   display_name: string | null;
   avatar_url: string | null;
   phone_number: string | null;
-  plan_type: 'free' | 'premium';
+  plan_type: 'free' | 'premium' | 'premium_plus' | 'enterprise';
   plan_expires_at: string | null;
   two_factor_enabled: boolean;
   authenticator_app: string | null;

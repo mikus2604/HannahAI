@@ -24,6 +24,10 @@ const items = [
   { title: "Plan Management", url: "/plans", icon: FileText },
 ];
 
+const premiumItems = [
+  { title: "Premium+ Features", url: "/premium-features", icon: Crown },
+];
+
 export function AppSidebar() {
   const { open } = useSidebar();
   const { signOut, profile } = useAuth();
@@ -34,7 +38,7 @@ export function AppSidebar() {
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent/50";
 
-  const isPremium = profile?.plan_type === 'premium';
+  const isPremiumPlus = profile?.plan_type === 'premium_plus' || profile?.plan_type === 'enterprise';
 
   return (
     <Sidebar>
@@ -70,7 +74,31 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {open && !isPremium && (
+        {isPremiumPlus && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Premium+ Features</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {premiumItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink 
+                        to={item.url} 
+                        end 
+                        className={({ isActive }) => getNavCls({ isActive })}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {open && !isPremiumPlus && profile?.plan_type === 'free' && (
           <SidebarGroup>
             <SidebarGroupContent>
               <div className="p-3 mx-2 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
