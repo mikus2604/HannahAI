@@ -164,19 +164,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const enable2FA = async () => {
     try {
-      // First, clean up any existing unverified factors to avoid conflicts
-      const { data: existingFactors } = await supabase.auth.mfa.listFactors();
-      
-      if (existingFactors?.totp) {
-        const unverifiedFactors = existingFactors.totp.filter(factor => factor.status === 'unverified');
-        for (const factor of unverifiedFactors) {
-          await supabase.auth.mfa.unenroll({ factorId: factor.id });
-        }
-      }
-
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
-        friendlyName: `Authenticator App ${Date.now()}`
+        friendlyName: 'Authenticator App'
       });
 
       if (error) throw error;
@@ -197,62 +187,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const verify2FA = async (token: string) => {
     try {
-      console.log('Starting 2FA verification with token:', token);
-      
-      // Get the current unverified factor
       const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
       
-      if (factorsError) {
-        console.error('Error listing factors:', factorsError);
-        throw factorsError;
-      }
+      if (factorsError) throw factorsError;
       
-      console.log('Available factors:', factors);
-      
-      // Find the most recent unverified factor
-      const unverifiedFactor = factors.totp
-        .filter(factor => factor.status === 'unverified')
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+      const unverifiedFactor = factors.totp.find(factor => factor.status === 'unverified');
       
       if (!unverifiedFactor) {
-        console.error('No unverified factor found');
         throw new Error('No unverified factor found. Please start the setup process again.');
       }
 
-      console.log('Using factor:', unverifiedFactor.id);
-
-      // First create a challenge
-      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
-        factorId: unverifiedFactor.id
-      });
-
-      if (challengeError) {
-        console.error('Challenge error:', challengeError);
-        throw challengeError;
-      }
-
-      console.log('Challenge created:', challengeData.id);
-
-      // Then verify with the challenge
-      const { data, error } = await supabase.auth.mfa.verify({
+      const { data, error } = await supabase.auth.mfa.challengeAndVerify({
         factorId: unverifiedFactor.id,
-        challengeId: challengeData.id,
         code: token
       });
 
-      if (error) {
-        console.error('Verification error:', error);
-        throw error;
-      }
-
-      console.log('2FA verification successful');
-
-      // Update profile to reflect 2FA status
-      await updateProfile({ two_factor_enabled: true });
+      if (error) throw error;
 
       return { error: null };
     } catch (error) {
-      console.error('2FA verification failed:', error);
       return { error: error as Error };
     }
   };
