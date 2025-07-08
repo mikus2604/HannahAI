@@ -165,6 +165,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          authenticator_app: string | null
           avatar_url: string | null
           created_at: string
           display_name: string | null
@@ -177,6 +178,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          authenticator_app?: string | null
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
@@ -189,6 +191,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          authenticator_app?: string | null
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null

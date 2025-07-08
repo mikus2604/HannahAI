@@ -12,6 +12,7 @@ interface Profile {
   plan_type: 'free' | 'premium';
   plan_expires_at: string | null;
   two_factor_enabled: boolean;
+  authenticator_app: string | null;
   created_at: string;
   updated_at: string;
 }

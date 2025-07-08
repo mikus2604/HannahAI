@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -24,6 +25,15 @@ const Security = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [secretCopied, setSecretCopied] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
+  const [selectedAuthApp, setSelectedAuthApp] = useState('');
+
+  const authenticatorApps = [
+    { value: 'google', label: 'Google Authenticator', description: 'Free app by Google' },
+    { value: 'microsoft', label: 'Microsoft Authenticator', description: 'Free app by Microsoft' },
+    { value: 'authy', label: 'Authy', description: 'Multi-device support' },
+    { value: '1password', label: '1Password', description: 'Password manager with 2FA' },
+    { value: 'other', label: 'Other TOTP App', description: 'Any compatible authenticator' },
+  ];
 
   const handle2FASetup = async () => {
     setIsLoading(true);
@@ -77,6 +87,15 @@ const Security = () => {
         return;
       }
 
+      // Store the selected authenticator app in the profile
+      const selectedApp = authenticatorApps.find(app => app.value === selectedAuthApp);
+      if (selectedApp) {
+        await updateProfile({ 
+          two_factor_enabled: true,
+          authenticator_app: selectedApp.label 
+        });
+      }
+
       toast({
         title: "2FA Enabled",
         description: "Two-factor authentication has been successfully enabled.",
@@ -84,6 +103,7 @@ const Security = () => {
       
       setShow2FASetup(false);
       setVerificationCode('');
+      setSelectedAuthApp('');
     } catch (error) {
       toast({
         title: "Error",
@@ -278,8 +298,11 @@ const Security = () => {
                       <p className="text-sm text-green-800 mb-2">
                         Your account is secured with TOTP (Time-based One-Time Password) authentication.
                       </p>
-                      <div className="text-xs text-green-700">
-                        <strong>Authenticator App:</strong> Any TOTP-compatible app (Google Authenticator, Microsoft Authenticator, Authy, 1Password, etc.)
+                      <div className="text-xs text-green-700 space-y-1">
+                        <div><strong>Authentication Method:</strong> TOTP (Time-based One-Time Password)</div>
+                        {profile?.authenticator_app && (
+                          <div><strong>Authenticator App:</strong> {profile.authenticator_app}</div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -363,10 +386,38 @@ const Security = () => {
           
           {step2FA === 'setup' ? (
             <div className="space-y-4">
-              <div className="text-center">
-                <h3 className="font-medium mb-2">Step 1: Scan QR Code</h3>
+              <div>
+                <h3 className="font-medium mb-2">Step 1: Choose Your Authenticator App</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Use your authenticator app to scan this QR code
+                  Select the authenticator app you want to use
+                </p>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="auth-app">Authenticator App</Label>
+                  <Select value={selectedAuthApp} onValueChange={setSelectedAuthApp}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choose an authenticator app" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border border-border shadow-lg z-50">
+                      {authenticatorApps.map((app) => (
+                        <SelectItem key={app.value} value={app.value} className="cursor-pointer hover:bg-muted">
+                          <div className="flex flex-col">
+                            <span className="font-medium">{app.label}</span>
+                            <span className="text-xs text-muted-foreground">{app.description}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="text-center">
+                <h3 className="font-medium mb-2">Step 2: Scan QR Code</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Use your {selectedAuthApp ? authenticatorApps.find(a => a.value === selectedAuthApp)?.label : 'authenticator app'} to scan this QR code
                 </p>
                 
                 {qrCode && (
@@ -379,7 +430,7 @@ const Security = () => {
               <Separator />
 
               <div>
-                <h3 className="font-medium mb-2">Step 2: Save Recovery Code</h3>
+                <h3 className="font-medium mb-2">Step 3: Save Recovery Code</h3>
                 <p className="text-sm text-muted-foreground mb-2">
                   Save this code in a secure location. You can use it to recover your account.
                 </p>
@@ -409,7 +460,11 @@ const Security = () => {
                 </div>
               </div>
 
-              <Button onClick={() => setStep2FA('verify')} className="w-full">
+              <Button 
+                onClick={() => setStep2FA('verify')} 
+                className="w-full"
+                disabled={!selectedAuthApp}
+              >
                 Continue to Verification
               </Button>
             </div>
