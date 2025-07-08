@@ -28,7 +28,9 @@ import {
   BarChart3,
   PieChart,
   Zap,
-  TestTube
+  TestTube,
+  Settings,
+  Wrench
 } from "lucide-react";
 
 interface AdminAnalytics {
@@ -85,6 +87,7 @@ const SuperUserDashboard = () => {
   const [hasAccess, setHasAccess] = useState(false);
   const [testingStates, setTestingStates] = useState<Record<string, boolean>>({});
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
+  const [showSetupModal, setShowSetupModal] = useState<string | null>(null);
 
   const testAPI = async (apiName: string, testFunction: () => Promise<any>) => {
     setTestingStates(prev => ({ ...prev, [apiName]: true }));
@@ -141,6 +144,35 @@ const SuperUserDashboard = () => {
     return data;
   });
 
+  // Handle setup modal actions
+  useEffect(() => {
+    if (showSetupModal === 'openai') {
+      // Open Supabase secrets management for OpenAI
+      window.open('https://supabase.com/dashboard/project/6250130c-ddd3-4b20-9034-aa32fa6ee0be/settings/functions', '_blank');
+      toast({
+        title: "Setup OpenAI API Key",
+        description: "Configure your OPENAI_API_KEY in the Supabase secrets section.",
+      });
+    } else if (showSetupModal === 'twilio') {
+      // Open Supabase secrets management for Twilio
+      window.open('https://supabase.com/dashboard/project/6250130c-ddd3-4b20-9034-aa32fa6ee0be/settings/functions', '_blank');
+      toast({
+        title: "Setup Twilio Credentials", 
+        description: "Configure your TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in the Supabase secrets section.",
+      });
+    } else if (showSetupModal === 'stripe') {
+      // Open Supabase secrets management for Stripe
+      window.open('https://supabase.com/dashboard/project/6250130c-ddd3-4b20-9034-aa32fa6ee0be/settings/functions', '_blank');
+      toast({
+        title: "Setup Stripe API Key",
+        description: "Configure your STRIPE_SECRET_KEY in the Supabase secrets section.",
+      });
+    }
+    
+    if (showSetupModal) {
+      setShowSetupModal(null);
+    }
+  }, [showSetupModal]);
   const getTestResult = (id: string) => {
     const result = testResults[id];
     if (!result) return null;
@@ -621,6 +653,14 @@ const SuperUserDashboard = () => {
                         <TestTube className="h-4 w-4 mr-1" />
                         {testingStates['openai'] ? 'Testing...' : 'Test Connection'}
                       </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setShowSetupModal('openai')}
+                      >
+                        <Settings className="h-4 w-4 mr-1" />
+                        Setup API Key
+                      </Button>
                       <Button variant="outline" size="sm" asChild>
                         <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">
                           View API Keys
@@ -652,6 +692,14 @@ const SuperUserDashboard = () => {
                         <TestTube className="h-4 w-4 mr-1" />
                         {testingStates['twilio'] ? 'Testing...' : 'Test Connection'}
                       </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setShowSetupModal('twilio')}
+                      >
+                        <Settings className="h-4 w-4 mr-1" />
+                        Setup API Keys
+                      </Button>
                       <Button variant="outline" size="sm" asChild>
                         <a href="https://console.twilio.com/project/api-keys" target="_blank" rel="noopener noreferrer">
                           Twilio Console
@@ -682,6 +730,14 @@ const SuperUserDashboard = () => {
                       >
                         <TestTube className="h-4 w-4 mr-1" />
                         {testingStates['stripe'] ? 'Testing...' : 'Test Connection'}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setShowSetupModal('stripe')}
+                      >
+                        <Settings className="h-4 w-4 mr-1" />
+                        Setup API Key
                       </Button>
                       <Button variant="outline" size="sm" asChild>
                         <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer">
