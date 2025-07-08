@@ -66,6 +66,7 @@ export type Database = {
           to_number: string
           twilio_call_sid: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           call_duration?: number | null
@@ -80,6 +81,7 @@ export type Database = {
           to_number: string
           twilio_call_sid: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           call_duration?: number | null
@@ -94,6 +96,7 @@ export type Database = {
           to_number?: string
           twilio_call_sid?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -126,6 +129,45 @@ export type Database = {
           notification_type?: string
           sent_at?: string
           status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          phone_number: string | null
+          plan_expires_at: string | null
+          plan_type: string
+          two_factor_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          phone_number?: string | null
+          plan_expires_at?: string | null
+          plan_type?: string
+          two_factor_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          phone_number?: string | null
+          plan_expires_at?: string | null
+          plan_type?: string
+          two_factor_enabled?: boolean
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
