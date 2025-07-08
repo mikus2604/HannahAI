@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { ApiKeySetupModal } from "@/components/dashboard/ApiKeySetupModal";
 import {
   Users,
   DollarSign,
@@ -87,7 +88,7 @@ const SuperUserDashboard = () => {
   const [hasAccess, setHasAccess] = useState(false);
   const [testingStates, setTestingStates] = useState<Record<string, boolean>>({});
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
-  const [showSetupModal, setShowSetupModal] = useState<string | null>(null);
+  const [showSetupModal, setShowSetupModal] = useState<'openai' | 'twilio' | 'stripe' | null>(null);
 
   const testAPI = async (apiName: string, testFunction: () => Promise<any>) => {
     setTestingStates(prev => ({ ...prev, [apiName]: true }));
@@ -144,35 +145,6 @@ const SuperUserDashboard = () => {
     return data;
   });
 
-  // Handle setup modal actions
-  useEffect(() => {
-    if (showSetupModal === 'openai') {
-      // Open Supabase secrets management for OpenAI
-      window.open('https://supabase.com/dashboard/project/6250130c-ddd3-4b20-9034-aa32fa6ee0be/settings/functions', '_blank');
-      toast({
-        title: "Setup OpenAI API Key",
-        description: "Configure your OPENAI_API_KEY in the Supabase secrets section.",
-      });
-    } else if (showSetupModal === 'twilio') {
-      // Open Supabase secrets management for Twilio
-      window.open('https://supabase.com/dashboard/project/6250130c-ddd3-4b20-9034-aa32fa6ee0be/settings/functions', '_blank');
-      toast({
-        title: "Setup Twilio Credentials", 
-        description: "Configure your TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in the Supabase secrets section.",
-      });
-    } else if (showSetupModal === 'stripe') {
-      // Open Supabase secrets management for Stripe
-      window.open('https://supabase.com/dashboard/project/6250130c-ddd3-4b20-9034-aa32fa6ee0be/settings/functions', '_blank');
-      toast({
-        title: "Setup Stripe API Key",
-        description: "Configure your STRIPE_SECRET_KEY in the Supabase secrets section.",
-      });
-    }
-    
-    if (showSetupModal) {
-      setShowSetupModal(null);
-    }
-  }, [showSetupModal]);
   const getTestResult = (id: string) => {
     const result = testResults[id];
     if (!result) return null;
@@ -819,6 +791,12 @@ const SuperUserDashboard = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      <ApiKeySetupModal
+        isOpen={!!showSetupModal}
+        onClose={() => setShowSetupModal(null)}
+        apiType={showSetupModal}
+      />
     </div>
   );
 };
