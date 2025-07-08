@@ -7,10 +7,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Settings, Phone, MessageSquare, Calendar, Users, TestTube, CheckCircle, XCircle } from "lucide-react";
+import { Settings, Phone, MessageSquare, Calendar, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
 
 const formSchema = z.object({
   assistantName: z.string().min(1, "Assistant name is required"),
@@ -27,8 +25,6 @@ type FormData = z.infer<typeof formSchema>;
 
 const AssistantSettings = () => {
   const { toast } = useToast();
-  const [isTestingAPI, setIsTestingAPI] = useState(false);
-  const [apiTestResult, setApiTestResult] = useState<{ success: boolean; message: string; testResponse?: string } | null>(null);
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -52,45 +48,6 @@ const AssistantSettings = () => {
     });
   };
 
-  const testOpenAIConnection = async () => {
-    setIsTestingAPI(true);
-    setApiTestResult(null);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('test-openai');
-      
-      if (error) {
-        throw error;
-      }
-      
-      setApiTestResult({
-        success: data.success,
-        message: data.message,
-        testResponse: data.testResponse
-      });
-      
-      toast({
-        title: data.success ? "API Test Successful" : "API Test Failed",
-        description: data.success ? "ChatGPT API is working correctly" : data.error,
-        variant: data.success ? "default" : "destructive",
-      });
-      
-    } catch (error) {
-      console.error('Error testing API:', error);
-      setApiTestResult({
-        success: false,
-        message: "Failed to test API connection"
-      });
-      
-      toast({
-        title: "Test Failed",
-        description: "Could not connect to test the API",
-        variant: "destructive",
-      });
-    } finally {
-      setIsTestingAPI(false);
-    }
-  };
 
   return (
     <div className="flex-1 space-y-6 p-6">
@@ -261,54 +218,6 @@ const AssistantSettings = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TestTube className="h-5 w-5" />
-                API Connection Test
-              </CardTitle>
-              <CardDescription>
-                Test your ChatGPT API connection to ensure Hannah can respond to calls
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-4">
-                <Button 
-                  onClick={testOpenAIConnection}
-                  disabled={isTestingAPI}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <TestTube className="h-4 w-4" />
-                  {isTestingAPI ? "Testing..." : "Test ChatGPT API"}
-                </Button>
-                
-                {apiTestResult && (
-                  <div className={`flex items-center gap-2 ${apiTestResult.success ? 'text-green-600' : 'text-red-600'}`}>
-                    {apiTestResult.success ? (
-                      <CheckCircle className="h-4 w-4" />
-                    ) : (
-                      <XCircle className="h-4 w-4" />
-                    )}
-                    <span className="text-sm font-medium">
-                      {apiTestResult.success ? 'Connection Successful' : 'Connection Failed'}
-                    </span>
-                  </div>
-                )}
-              </div>
-              
-              {apiTestResult?.testResponse && (
-                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm text-green-800">
-                    <strong>Hannah's test response:</strong>
-                  </p>
-                  <p className="text-sm text-green-700 mt-1 italic">
-                    "{apiTestResult.testResponse}"
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
           <div className="flex justify-end">
             <Button type="submit" size="lg">
