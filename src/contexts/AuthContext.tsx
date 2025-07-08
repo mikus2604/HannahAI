@@ -197,10 +197,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const verify2FA = async (token: string) => {
     try {
+      console.log('Starting 2FA verification with token:', token);
+      
       // Get the current unverified factor
       const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
       
-      if (factorsError) throw factorsError;
+      if (factorsError) {
+        console.error('Error listing factors:', factorsError);
+        throw factorsError;
+      }
+      
+      console.log('Available factors:', factors);
       
       // Find the most recent unverified factor
       const unverifiedFactor = factors.totp
@@ -208,21 +215,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
       
       if (!unverifiedFactor) {
+        console.error('No unverified factor found');
         throw new Error('No unverified factor found. Please start the setup process again.');
       }
 
-      const { data, error } = await supabase.auth.mfa.challengeAndVerify({
+      console.log('Using factor:', unverifiedFactor.id);
+
+      // First create a challenge
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId: unverifiedFactor.id
+      });
+
+      if (challengeError) {
+        console.error('Challenge error:', challengeError);
+        throw challengeError;
+      }
+
+      console.log('Challenge created:', challengeData.id);
+
+      // Then verify with the challenge
+      const { data, error } = await supabase.auth.mfa.verify({
         factorId: unverifiedFactor.id,
+        challengeId: challengeData.id,
         code: token
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Verification error:', error);
+        throw error;
+      }
+
+      console.log('2FA verification successful');
 
       // Update profile to reflect 2FA status
       await updateProfile({ two_factor_enabled: true });
 
       return { error: null };
     } catch (error) {
+      console.error('2FA verification failed:', error);
       return { error: error as Error };
     }
   };
