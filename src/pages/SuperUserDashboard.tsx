@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import GrantSuperUser from "@/components/GrantSuperUser";
 import { UserPlanManager } from "@/components/dashboard/UserPlanManager";
+import { UserDetailsModal } from "@/components/dashboard/UserDetailsModal";
 
 interface AdminAnalytics {
   analytics: {
@@ -91,6 +92,7 @@ const SuperUserDashboard = () => {
   const [testingStates, setTestingStates] = useState<Record<string, boolean>>({});
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
   const [showSetupModal, setShowSetupModal] = useState<'openai' | 'twilio' | 'stripe' | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const testAPI = async (apiName: string, testFunction: () => Promise<any>) => {
     setTestingStates(prev => ({ ...prev, [apiName]: true }));
@@ -432,12 +434,16 @@ const SuperUserDashboard = () => {
           <Card>
             <CardHeader>
               <CardTitle>Recent User Signups</CardTitle>
-              <CardDescription>Latest users who joined the platform</CardDescription>
+              <CardDescription>Latest users who joined the platform - click on a user to view details</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {recentUsers.map((user) => (
-                  <div key={user.user_id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div 
+                    key={user.user_id} 
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => setSelectedUserId(user.user_id)}
+                  >
                     <div>
                       <p className="font-medium">{user.display_name || 'Anonymous'}</p>
                       <p className="text-sm text-muted-foreground">{formatDate(user.created_at)}</p>
@@ -831,6 +837,12 @@ const SuperUserDashboard = () => {
         isOpen={!!showSetupModal}
         onClose={() => setShowSetupModal(null)}
         apiType={showSetupModal}
+      />
+
+      <UserDetailsModal
+        isOpen={!!selectedUserId}
+        onClose={() => setSelectedUserId(null)}
+        userId={selectedUserId || ''}
       />
     </div>
   );

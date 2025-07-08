@@ -43,11 +43,11 @@ serve(async (req) => {
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     // Parse request body
-    const { priceAmount, planName, currency = 'usd' } = await req.json();
+    const { priceAmount, planName, currency = 'usd', trial_period_days = 0 } = await req.json();
     if (!priceAmount || !planName) {
       throw new Error("Missing required fields: priceAmount, planName");
     }
-    logStep("Request data parsed", { priceAmount, planName, currency });
+    logStep("Request data parsed", { priceAmount, planName, currency, trial_period_days });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     
@@ -61,8 +61,8 @@ serve(async (req) => {
       logStep("No existing customer found");
     }
 
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create({
+    // Create session configuration
+    const sessionConfig: any = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [
@@ -84,7 +84,18 @@ serve(async (req) => {
       cancel_url: `${req.headers.get("origin")}/plans?canceled=true`,
       allow_promotion_codes: true,
       billing_address_collection: 'required',
-    });
+    };
+
+    // Add trial period if specified
+    if (trial_period_days > 0) {
+      sessionConfig.subscription_data = {
+        trial_period_days: trial_period_days
+      };
+      logStep("Added trial period", { trial_period_days });
+    }
+
+    // Create checkout session
+    const session = await stripe.checkout.sessions.create(sessionConfig);
 
     logStep("Checkout session created", { sessionId: session.id, url: session.url });
 

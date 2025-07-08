@@ -91,10 +91,11 @@ const PlanManagement = () => {
         'Custom hold music',
         'White-label email notifications'
       ],
-      buttonText: 'Upgrade to Premium',
+      buttonText: 'Start 7-Day Free Trial',
       popular: true,
       stripePrice: 2495, // $24.95 in USD cents
-      color: 'border-primary'
+      color: 'border-primary',
+      trialDays: 7
     },
     {
       id: 'premium_plus',
@@ -114,10 +115,11 @@ const PlanManagement = () => {
         'White-label email notifications',
         'Phone support'
       ],
-      buttonText: 'Upgrade to Premium+',
+      buttonText: 'Start 7-Day Free Trial',
       popular: false,
       stripePrice: 4995, // $49.95 in USD cents
-      color: 'border-purple-500'
+      color: 'border-purple-500',
+      trialDays: 7
     },
     {
       id: 'enterprise',
@@ -203,7 +205,8 @@ const PlanManagement = () => {
         body: { 
           priceAmount: checkoutData.amount,
           planName: plan.name,
-          currency: checkoutData.currency
+          currency: checkoutData.currency,
+          trial_period_days: plan.trialDays || 0
         }
       });
 
