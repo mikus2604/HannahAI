@@ -265,6 +265,7 @@ const SuperUserDashboard = () => {
           <TabsTrigger value="revenue">Revenue</TabsTrigger>
           <TabsTrigger value="calls">Calls</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -502,6 +503,155 @@ const SuperUserDashboard = () => {
                     <span className="text-sm text-muted-foreground">
                       {formatDate(data.timestamp)}
                     </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-4">
+          <div className="grid gap-4">
+            {/* API Keys Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5" />
+                  API Keys & Credentials
+                </CardTitle>
+                <CardDescription>
+                  Configure your service credentials and API keys
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-6">
+                  {/* OpenAI */}
+                  <div className="border rounded-lg p-4 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <Activity className="h-6 w-6 mt-1" />
+                        <div>
+                          <h3 className="font-semibold">OpenAI API</h3>
+                          <p className="text-sm text-muted-foreground">Powers Hannah, your AI receptionist</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" asChild>
+                        <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">
+                          View API Keys
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Twilio */}
+                  <div className="border rounded-lg p-4 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <Phone className="h-6 w-6 mt-1" />
+                        <div>
+                          <h3 className="font-semibold">Twilio</h3>
+                          <p className="text-sm text-muted-foreground">Voice and SMS communication service</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" asChild>
+                        <a href="https://console.twilio.com/project/api-keys" target="_blank" rel="noopener noreferrer">
+                          Twilio Console
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Stripe */}
+                  <div className="border rounded-lg p-4 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <CreditCard className="h-6 w-6 mt-1" />
+                        <div>
+                          <h3 className="font-semibold">Stripe</h3>
+                          <p className="text-sm text-muted-foreground">Payment processing service</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" asChild>
+                        <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer">
+                          Stripe Dashboard
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Webhook URLs Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <XCircle className="h-5 w-5" />
+                  Webhook URLs
+                </CardTitle>
+                <CardDescription>
+                  Configure these URLs in your external services
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold">Twilio Voice Webhook URL</h4>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming');
+                          toast({
+                            title: "Copied!",
+                            description: "Voice webhook URL copied to clipboard",
+                          });
+                        }}
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <code className="bg-muted px-3 py-2 rounded block text-sm break-all">
+                      https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming
+                    </code>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Set this as your Twilio phone number's voice webhook URL
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold">Twilio SMS Webhook URL</h4>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText('https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/sms-webhook');
+                          toast({
+                            title: "Copied!",
+                            description: "SMS webhook URL copied to clipboard",
+                          });
+                        }}
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <code className="bg-muted px-3 py-2 rounded block text-sm break-all">
+                      https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/sms-webhook
+                    </code>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Set this as your Twilio phone number's SMS webhook URL
+                    </p>
                   </div>
                 </div>
               </CardContent>

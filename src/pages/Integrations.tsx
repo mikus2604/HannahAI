@@ -6,19 +6,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { 
-  Database, 
   Calendar, 
-  Bot, 
-  Phone, 
-  MessageSquare, 
   TestTube, 
   CheckCircle, 
   XCircle, 
   Settings, 
-  Key,
   ExternalLink,
-  Copy,
-  Link
+  MessageSquare
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,18 +61,6 @@ const Integrations = () => {
     }
   };
 
-  const testOpenAI = () => testAPI('openai', async () => {
-    const { data, error } = await supabase.functions.invoke('test-openai');
-    if (error) throw error;
-    return data;
-  });
-
-  const testTwilio = () => testAPI('twilio', async () => {
-    const { data, error } = await supabase.functions.invoke('test-twilio');
-    if (error) throw error;
-    return data;
-  });
-
   const testCalcom = () => testAPI('calcom', async () => {
     const { data, error } = await supabase.functions.invoke('test-calcom');
     if (error) throw error;
@@ -89,14 +71,6 @@ const Integrations = () => {
     setConfigModal({ open: true, integration });
     // Pre-populate form with existing values if any
     const initialData: Record<string, string> = {};
-    if (integration.secretName) {
-      initialData[integration.secretName] = '';
-    }
-    if (integration.secrets) {
-      integration.secrets.forEach((secret: string) => {
-        initialData[secret] = '';
-      });
-    }
     if (integration.id === 'calcom') {
       initialData.username = '';
       initialData.apiKey = '';
@@ -120,19 +94,11 @@ const Integrations = () => {
     
     // Trigger the appropriate secret forms based on the integration
     if (integration.secretName) {
-      // Single secret (OpenAI, Cal.com)
+      // Single secret (Cal.com)
       const event = new CustomEvent('lov-secret-form', {
         detail: { name: integration.secretName }
       });
       window.dispatchEvent(event);
-    } else if (integration.secrets) {
-      // Multiple secrets (Twilio)
-      integration.secrets.forEach((secret: string) => {
-        const event = new CustomEvent('lov-secret-form', {
-          detail: { name: secret }
-        });
-        window.dispatchEvent(event);
-      });
     }
     
     toast({
@@ -144,68 +110,10 @@ const Integrations = () => {
     closeConfigModal();
   };
 
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied!",
-      description: `${label} copied to clipboard`,
-    });
-  };
-
   const renderConfigForm = () => {
     if (!configModal.integration) return null;
 
     const integration = configModal.integration;
-
-    if (integration.id === 'openai') {
-      return (
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="openai-key">OpenAI API Key</Label>
-            <Input
-              id="openai-key"
-              type="password"
-              placeholder="sk-..."
-              value={formData.OPENAI_API_KEY || ''}
-              onChange={(e) => handleFormChange('OPENAI_API_KEY', e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Your OpenAI API key from platform.openai.com
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    if (integration.id === 'twilio') {
-      return (
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="twilio-sid">Account SID</Label>
-            <Input
-              id="twilio-sid"
-              type="text"
-              placeholder="AC..."
-              value={formData.TWILIO_ACCOUNT_SID || ''}
-              onChange={(e) => handleFormChange('TWILIO_ACCOUNT_SID', e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="twilio-token">Auth Token</Label>
-            <Input
-              id="twilio-token"
-              type="password"
-              placeholder="Auth Token"
-              value={formData.TWILIO_AUTH_TOKEN || ''}
-              onChange={(e) => handleFormChange('TWILIO_AUTH_TOKEN', e.target.value)}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Find these credentials in your Twilio Console dashboard
-          </p>
-        </div>
-      );
-    }
 
     if (integration.id === 'calcom') {
       return (
@@ -245,35 +153,9 @@ const Integrations = () => {
 
   const integrations = [
     {
-      id: 'openai',
-      title: 'OpenAI API',
-      description: 'Powers Hannah, your AI receptionist',
-      icon: Bot,
-      status: 'configured', // This would be dynamic in a real app
-      secretName: 'OPENAI_API_KEY',
-      testFunction: testOpenAI,
-      links: [
-        { label: 'Get API Key', url: 'https://platform.openai.com/api-keys' },
-        { label: 'Documentation', url: 'https://platform.openai.com/docs' }
-      ]
-    },
-    {
-      id: 'twilio',
-      title: 'Twilio',
-      description: 'Voice and SMS communication service',
-      icon: Phone,
-      status: 'configured',
-      secrets: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN'],
-      testFunction: testTwilio,
-      links: [
-        { label: 'Twilio Console', url: 'https://console.twilio.com' },
-        { label: 'API Keys', url: 'https://console.twilio.com/project/api-keys' }
-      ]
-    },
-    {
       id: 'calcom',
       title: 'Cal.com',
-      description: 'Meeting scheduling integration',
+      description: 'Meeting scheduling integration for appointment booking',
       icon: Calendar,
       status: 'not-configured',
       secretName: 'CALCOM_API_KEY',
@@ -316,19 +198,19 @@ const Integrations = () => {
     <div className="flex-1 space-y-6 p-6">
       <div>
         <h1 className="text-3xl font-bold">Integrations</h1>
-        <p className="text-muted-foreground">Manage API keys and external service connections</p>
+        <p className="text-muted-foreground">Connect external services to enhance your assistant's capabilities</p>
       </div>
 
-      {/* API Keys & Credentials Section */}
+      {/* Cal.com Integration Section */}
       <div className="grid gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5" />
-              API Keys & Credentials
+              <Calendar className="h-5 w-5" />
+              Scheduling Integration
             </CardTitle>
             <CardDescription>
-              Configure your service credentials and API keys
+              Connect your Cal.com account to enable appointment scheduling
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -347,27 +229,14 @@ const Integrations = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    {integration.secretName && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => openConfigModal(integration)}
-                      >
-                        <Settings className="h-4 w-4 mr-1" />
-                        Configure API Key
-                      </Button>
-                    )}
-                    
-                    {integration.secrets && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => openConfigModal(integration)}
-                      >
-                        <Settings className="h-4 w-4 mr-1" />
-                        Configure Credentials
-                      </Button>
-                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => openConfigModal(integration)}
+                    >
+                      <Settings className="h-4 w-4 mr-1" />
+                      Configure API Key
+                    </Button>
 
                     {integration.testFunction && (
                       <Button 
@@ -403,81 +272,21 @@ const Integrations = () => {
           </CardContent>
         </Card>
 
-        {/* Webhook URLs Section */}
+        {/* Additional Integrations Coming Soon */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Link className="h-5 w-5" />
-              Webhook URLs
-            </CardTitle>
+            <CardTitle>More Integrations Coming Soon</CardTitle>
             <CardDescription>
-              Configure these URLs in your external services
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold">Twilio Voice Webhook URL</h4>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => copyToClipboard(
-                      'https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming',
-                      'Voice webhook URL'
-                    )}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-                <code className="bg-muted px-3 py-2 rounded block text-sm break-all">
-                  https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming
-                </code>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Set this as your Twilio phone number's voice webhook URL
-                </p>
-              </div>
-              
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold">Twilio SMS Webhook URL</h4>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => copyToClipboard(
-                      'https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/sms-webhook',
-                      'SMS webhook URL'
-                    )}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-                <code className="bg-muted px-3 py-2 rounded block text-sm break-all">
-                  https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/sms-webhook
-                </code>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Set this as your Twilio phone number's SMS webhook URL
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Additional Services Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Additional Services</CardTitle>
-            <CardDescription>
-              Future integrations and custom webhooks
+              We're working on adding more service integrations
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-center py-8">
-              <Database className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-semibold mb-2">More Integrations Coming Soon</h3>
+              <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="font-semibold mb-2">Additional Services</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                We're working on adding more service integrations like CRM systems, 
-                email platforms, and business tools.
+                We're working on adding more scheduling platforms, CRM systems, 
+                and business tools to enhance your assistant's capabilities.
               </p>
               <Button variant="outline" asChild>
                 <a href="mailto:support@example.com">
