@@ -12,12 +12,11 @@ import { NavLink } from "react-router-dom";
 interface Usage {
   calls_count: number;
   greeting_messages_count: number;
-  api_requests_count: number;
 }
 
 const UsageOverview = () => {
   const { user, profile } = useAuth();
-  const [usage, setUsage] = useState<Usage>({ calls_count: 0, greeting_messages_count: 0, api_requests_count: 0 });
+  const [usage, setUsage] = useState<Usage>({ calls_count: 0, greeting_messages_count: 0 });
   const [loading, setLoading] = useState(true);
 
   const isPremium = profile?.plan_type === 'premium';
@@ -35,7 +34,7 @@ const UsageOverview = () => {
     try {
       const { data, error } = await supabase
         .from('user_usage')
-        .select('calls_count, greeting_messages_count, api_requests_count')
+        .select('calls_count, greeting_messages_count')
         .eq('user_id', user.id)
         .eq('month_year', currentMonth)
         .single();
@@ -45,7 +44,7 @@ const UsageOverview = () => {
         return;
       }
 
-      setUsage(data || { calls_count: 0, greeting_messages_count: 0, api_requests_count: 0 });
+      setUsage(data || { calls_count: 0, greeting_messages_count: 0 });
     } catch (error) {
       console.error('Error fetching usage:', error);
     } finally {
@@ -83,8 +82,7 @@ const UsageOverview = () => {
 
   const limits = {
     calls: isPremium ? Infinity : 100,
-    greetings: isPremium ? Infinity : 1,
-    api: isPremium ? 10000 : 100
+    greetings: isPremium ? Infinity : 1
   };
 
   const callsPercentage = isPremium ? 0 : Math.min((usage.calls_count / limits.calls) * 100, 100);
@@ -176,26 +174,6 @@ const UsageOverview = () => {
           )}
         </div>
 
-        {/* API Requests */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">API Requests</span>
-            <span className={`text-sm font-semibold ${getUsageColor(usage.api_requests_count, limits.api)}`}>
-              {usage.api_requests_count} {isPremium ? '/ 10,000' : `/ ${limits.api}`}
-            </span>
-          </div>
-          {!isPremium && (
-            <div className="text-xs text-muted-foreground">
-              Limited API access on free plan
-            </div>
-          )}
-          {isPremium && (
-            <div className="text-sm text-green-600 font-medium">
-              ✓ Full API access (10,000 requests/month)
-            </div>
-          )}
-        </div>
-
         {/* Upgrade CTA for free users */}
         {!isPremium && (
           <div className="pt-4 border-t">
@@ -207,7 +185,7 @@ const UsageOverview = () => {
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Unlimited calls per month</li>
                 <li>• Unlimited custom greetings</li>
-                <li>• 6 months recording storage</li>
+                <li>• 30-day recording storage</li>
                 <li>• Advanced AI features</li>
                 <li>• Priority support</li>
               </ul>
