@@ -106,7 +106,7 @@ export function AppSidebar() {
                   <Crown className="h-4 w-4 text-yellow-600" />
                   <span className="text-xs font-medium">Upgrade to Premium</span>
                 </div>
-                <NavLink to="/upgrade">
+                <NavLink to="/plans">
                   <Button size="sm" className="w-full bg-gradient-to-r from-yellow-500 to-orange-500">
                     <Crown className="h-3 w-3 mr-1" />
                     Upgrade Now
