@@ -307,6 +307,15 @@ const PremiumFeatures = () => {
               and available in your call history with confidence scores.
             </AlertDescription>
           </Alert>
+          <div className="mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => window.open('https://supabase.com/dashboard/project/idupowkqzcwrjslcixsp/functions', '_blank')}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              View Edge Functions Dashboard
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
