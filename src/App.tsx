@@ -16,6 +16,7 @@ import Security from "./pages/Security";
 
 import NotFound from "./pages/NotFound";
 import PremiumFeatures from "./pages/PremiumFeatures";
+import SuperUserDashboard from "./pages/SuperUserDashboard";
 
 const queryClient = new QueryClient();
 
@@ -82,7 +83,7 @@ const AppLayout = () => {
               <Route path="/integrations" element={<Integrations />} />
               <Route path="/plans" element={<PlanManagement />} />
               <Route path="/premium-features" element={<PremiumFeatures />} />
-              
+              <Route path="/admin" element={<SuperUserDashboard />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>

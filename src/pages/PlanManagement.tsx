@@ -22,6 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import SubscriptionTester from "@/components/SubscriptionTester";
+import GrantSuperUser from "@/components/GrantSuperUser";
 
 interface SubscriptionInfo {
   subscribed: boolean;
@@ -451,9 +452,16 @@ const PlanManagement = () => {
 
       {/* Subscription Integration Tester */}
       {user && (
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4">Integration Testing</h2>
-          <SubscriptionTester />
+        <div className="mt-8 space-y-6">
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Integration Testing</h2>
+            <SubscriptionTester />
+          </div>
+          
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Super User Access</h2>
+            <GrantSuperUser />
+          </div>
         </div>
       )}
     </div>

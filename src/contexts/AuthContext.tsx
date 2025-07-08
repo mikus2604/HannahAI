@@ -27,6 +27,7 @@ interface AuthContextType {
   loading: boolean;
   requires2FA: boolean;
   tempSession: { email: string; password: string } | null;
+  userRoles: string[];
   signUp: (email: string, password: string, displayName?: string) => Promise<{ error: AuthError | null }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null; requires2FA?: boolean }>;
   signInWith2FA: (token: string) => Promise<{ error: Error | null }>;
@@ -36,6 +37,7 @@ interface AuthContextType {
   disable2FA: () => Promise<{ error: Error | null }>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
   checkSubscriptionStatus: () => Promise<void>;
+  hasRole: (role: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -55,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [requires2FA, setRequires2FA] = useState(false);
   const [tempSession, setTempSession] = useState<{ email: string; password: string } | null>(null);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -113,6 +116,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setProfile(data as Profile);
+
+      // Fetch user roles
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+
+      setUserRoles(roles?.map(r => r.role) || []);
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
@@ -446,6 +457,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const hasRole = (role: string) => {
+    return userRoles.includes(role);
+  };
+
   const value = {
     user,
     session,
@@ -453,6 +468,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     requires2FA,
     tempSession,
+    userRoles,
     signUp,
     signIn,
     signInWith2FA,
@@ -462,6 +478,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     disable2FA,
     updateProfile,
     checkSubscriptionStatus,
+    hasRole,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -2,6 +2,7 @@ import { PhoneCall, Settings, Database, FileText, Shield, Crown, LogOut } from "
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 import {
   Sidebar,
@@ -30,7 +31,7 @@ const premiumItems = [
 
 export function AppSidebar() {
   const { open } = useSidebar();
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, hasRole } = useAuth();
   const location = useLocation();
   const currentPath = location.pathname;
 
@@ -117,6 +118,39 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
       </SidebarContent>
+      
+      {/* Super User Admin Section */}
+      {hasRole('super_user') && (
+        <div className="border-t">
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-red-600 font-semibold">
+              Super User
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/admin"
+                      className={({ isActive }) =>
+                        cn(
+                          "flex items-center gap-2 p-2 rounded-lg transition-colors",
+                          isActive
+                            ? "bg-red-100 text-red-900 font-medium"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        )
+                      }
+                    >
+                      <Shield className="h-4 w-4" />
+                      <span>Admin Dashboard</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </div>
+      )}
       
       <SidebarFooter>
         <SidebarGroup>

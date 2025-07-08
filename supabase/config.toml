@@ -35,3 +35,9 @@ verify_jwt = false
 
 [functions.customer-portal]
 verify_jwt = false
+
+[functions.admin-analytics]
+verify_jwt = false
+
+[functions.grant-super-user]
+verify_jwt = false
