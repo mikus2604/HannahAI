@@ -34,6 +34,7 @@ import {
   Wrench
 } from "lucide-react";
 import GrantSuperUser from "@/components/GrantSuperUser";
+import { UserPlanManager } from "@/components/dashboard/UserPlanManager";
 
 interface AdminAnalytics {
   analytics: {
@@ -591,6 +592,21 @@ const SuperUserDashboard = () => {
         </TabsContent>
 
         <TabsContent value="admin" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                User Plan Management
+              </CardTitle>
+              <CardDescription>
+                Manually update user subscription plans without payment
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UserPlanManager />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
