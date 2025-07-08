@@ -620,7 +620,7 @@ const SuperUserDashboard = () => {
                 User Role Management
               </CardTitle>
               <CardDescription>
-                Grant super user access to trusted administrators
+                Grant super user access by email (legacy method) - use user details popup for individual users
               </CardDescription>
             </CardHeader>
             <CardContent>

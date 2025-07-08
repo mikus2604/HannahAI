@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -18,7 +19,9 @@ import {
   DollarSign,
   Activity,
   MapPin,
-  Briefcase
+  Briefcase,
+  Shield,
+  Lock
 } from "lucide-react";
 
 interface UserDetailsModalProps {
@@ -40,6 +43,7 @@ interface UserDetails {
   total_calls: number;
   total_spent: number;
   last_call_date: string | null;
+  is_super_user: boolean;
 }
 
 export const UserDetailsModal = ({ isOpen, onClose, userId }: UserDetailsModalProps) => {
@@ -48,6 +52,9 @@ export const UserDetailsModal = ({ isOpen, onClose, userId }: UserDetailsModalPr
   const [selectedPlan, setSelectedPlan] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
+  const [password, setPassword] = useState("");
+  const [isGrantingSuperUser, setIsGrantingSuperUser] = useState(false);
 
   const plans = [
     { id: 'free', name: 'Free', icon: Phone, color: 'text-gray-500' },
@@ -61,58 +68,25 @@ export const UserDetailsModal = ({ isOpen, onClose, userId }: UserDetailsModalPr
     
     setIsLoading(true);
     try {
-      // Get user profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (profileError) throw profileError;
-
-      // Get subscription info
-      const { data: subscription } = await supabase
-        .from('subscribers')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      // Get user auth data
-      const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId);
-      if (authError) throw authError;
-
-      // Get call statistics
-      const { data: calls } = await supabase
-        .from('calls')
-        .select('call_duration, created_at')
-        .eq('user_id', userId);
-
-      const totalCalls = calls?.length || 0;
-      const lastCallDate = calls?.length ? calls[0]?.created_at : null;
-      
-      // Calculate total spent (would need Stripe integration for real data)
-      const totalSpent = subscription?.subscribed ? 50.00 : 0; // Mock data
-
-      setUserDetails({
-        id: userId,
-        email: authUser.user?.email || '',
-        display_name: profile?.display_name,
-        plan_type: profile?.plan_type,
-        plan_expires_at: profile?.plan_expires_at,
-        subscribed: subscription?.subscribed || false,
-        subscription_tier: subscription?.subscription_tier,
-        created_at: profile?.created_at,
-        phone_number: profile?.phone_number,
-        total_calls: totalCalls,
-        total_spent: totalSpent,
-        last_call_date: lastCallDate
+      const { data: userDetailsData, error } = await supabase.functions.invoke('get-user-details', {
+        body: { userId }
       });
 
-      setSelectedPlan(profile?.plan_type || 'free');
+      if (error) {
+        throw new Error(error.message || 'Failed to fetch user details');
+      }
+
+      if (userDetailsData?.error) {
+        throw new Error(userDetailsData.error);
+      }
+
+      setUserDetails(userDetailsData);
+      setSelectedPlan(userDetailsData.plan_type || 'free');
     } catch (error) {
+      console.error('Error fetching user details:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch user details",
+        description: error instanceof Error ? error.message : "Failed to fetch user details",
         variant: "destructive",
       });
     } finally {
@@ -177,6 +151,50 @@ export const UserDetailsModal = ({ isOpen, onClose, userId }: UserDetailsModalPr
     }
   };
 
+  const grantSuperUserRole = async () => {
+    if (!userDetails || !password) return;
+
+    setIsGrantingSuperUser(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('grant-super-user-with-password', {
+        body: {
+          targetUserId: userDetails.id,
+          currentUserPassword: password
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to grant super user role');
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      // Update local state
+      setUserDetails({
+        ...userDetails,
+        is_super_user: true
+      });
+
+      setShowPasswordConfirm(false);
+      setPassword("");
+
+      toast({
+        title: "Super User Role Granted",
+        description: `Successfully granted super user role to ${userDetails.email}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to Grant Super User Role",
+        description: error instanceof Error ? error.message : "Failed to grant super user role",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGrantingSuperUser(false);
+    }
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Never';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -200,6 +218,11 @@ export const UserDetailsModal = ({ isOpen, onClose, userId }: UserDetailsModalPr
   useEffect(() => {
     if (isOpen && userId) {
       fetchUserDetails();
+    }
+    if (!isOpen) {
+      // Reset state when modal closes
+      setShowPasswordConfirm(false);
+      setPassword("");
     }
   }, [isOpen, userId]);
 
@@ -358,6 +381,87 @@ export const UserDetailsModal = ({ isOpen, onClose, userId }: UserDetailsModalPr
                     <p className="text-sm text-muted-foreground">Last Call</p>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* User Permissions */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  User Permissions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Shield className={`h-5 w-5 ${userDetails.is_super_user ? 'text-red-600' : 'text-gray-400'}`} />
+                    <div>
+                      <p className="font-medium">Super User Access</p>
+                      <p className="text-sm text-muted-foreground">
+                        {userDetails.is_super_user ? 'This user has super user privileges' : 'Standard user access'}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    {userDetails.is_super_user ? (
+                      <Badge variant="destructive">Super User</Badge>
+                    ) : (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setShowPasswordConfirm(true)}
+                      >
+                        Make a SU
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Password Confirmation Dialog */}
+                {showPasswordConfirm && (
+                  <div className="mt-4 p-4 border rounded-lg bg-muted/50">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 text-amber-600">
+                        <Lock className="h-4 w-4" />
+                        <span className="font-medium">Password Confirmation Required</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Enter your password to confirm granting super user access to {userDetails.email}
+                      </p>
+                      <div>
+                        <Label htmlFor="password">Your Password</Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && password && grantSuperUserRole()}
+                          placeholder="Enter your password"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={grantSuperUserRole}
+                          disabled={isGrantingSuperUser || !password}
+                          size="sm"
+                        >
+                          {isGrantingSuperUser ? 'Granting...' : 'Confirm Grant Super User'}
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setShowPasswordConfirm(false);
+                            setPassword("");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
