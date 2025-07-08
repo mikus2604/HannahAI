@@ -25,8 +25,11 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  requires2FA: boolean;
+  tempSession: { email: string; password: string } | null;
   signUp: (email: string, password: string, displayName?: string) => Promise<{ error: AuthError | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | null; requires2FA?: boolean }>;
+  signInWith2FA: (token: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   enable2FA: () => Promise<{ qrCode: string; secret: string; error: Error | null }>;
   verify2FA: (token: string, secret: string) => Promise<{ error: Error | null }>;
@@ -49,6 +52,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [tempSession, setTempSession] = useState<{ email: string; password: string } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -138,24 +143,127 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    // First, check if user has 2FA enabled
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('two_factor_enabled')
+      .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '')
+      .single();
 
-    if (error) {
-      toast({
-        title: "Sign In Error",
-        description: error.message,
-        variant: "destructive",
+    // Try to find user by email to check 2FA status
+    const { data: userProfiles } = await supabase
+      .from('profiles')
+      .select('two_factor_enabled, user_id')
+      .limit(1);
+
+    // Check if any user has this email and 2FA enabled
+    let userHas2FA = false;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
+
+      if (error) {
+        toast({
+          title: "Sign In Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        return { error, requires2FA: false };
+      }
+
+      // Check if this user has 2FA enabled
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('two_factor_enabled')
+          .eq('user_id', data.user.id)
+          .single();
+
+        if (profile?.two_factor_enabled) {
+          // Sign out immediately and require 2FA
+          await supabase.auth.signOut();
+          setTempSession({ email, password });
+          setRequires2FA(true);
+          return { error: null, requires2FA: true };
+        }
+      }
+
+      return { error: null, requires2FA: false };
+    } catch (error) {
+      return { error: error as AuthError, requires2FA: false };
+    }
+  };
+
+  const signInWith2FA = async (token: string) => {
+    if (!tempSession) {
+      return { error: new Error('No pending authentication session') };
     }
 
-    return { error };
+    try {
+      // Sign in with stored credentials
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: tempSession.email,
+        password: tempSession.password,
+      });
+
+      if (signInError) {
+        return { error: signInError };
+      }
+
+      if (!data.user) {
+        return { error: new Error('Authentication failed') };
+      }
+
+      // Get user's TOTP secret
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('totp_secret')
+        .eq('user_id', data.user.id)
+        .single();
+
+      if (profileError || !profile?.totp_secret) {
+        await supabase.auth.signOut();
+        return { error: new Error('2FA configuration error') };
+      }
+
+      // Verify TOTP token
+      const totp = new OTPAuth.TOTP({
+        issuer: 'Voice Assistant',
+        label: data.user.email || 'User',
+        algorithm: 'SHA1',
+        digits: 6,
+        period: 30,
+        secret: profile.totp_secret,
+      });
+
+      const delta = totp.validate({ token, window: 2 });
+      
+      if (delta === null) {
+        await supabase.auth.signOut();
+        return { error: new Error('Invalid verification code') };
+      }
+
+      // Clear temp session and 2FA requirement
+      setTempSession(null);
+      setRequires2FA(false);
+      
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully signed in with 2FA.",
+      });
+
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
   };
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
+    setRequires2FA(false);
+    setTempSession(null);
     if (error) {
       toast({
         title: "Sign Out Error",
@@ -303,8 +411,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     session,
     profile,
     loading,
+    requires2FA,
+    tempSession,
     signUp,
     signIn,
+    signInWith2FA,
     signOut,
     enable2FA,
     verify2FA,

@@ -14,12 +14,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, signUp, user, loading } = useAuth();
+  const { signIn, signUp, signInWith2FA, user, loading, requires2FA } = useAuth();
   const { toast } = useToast();
   
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -82,16 +83,47 @@ const Auth = () => {
           });
         }
       } else {
-        const { error } = await signIn(formData.email, formData.password);
-        if (!error) {
+        const { error, requires2FA } = await signIn(formData.email, formData.password);
+        if (!error && !requires2FA) {
           toast({
             title: "Welcome back!",
             description: "You have successfully signed in.",
           });
         }
+        // If requires2FA is true, the component will automatically show the 2FA form
       }
     } catch (error) {
       console.error("Auth error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handle2FASubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!twoFactorCode.trim()) {
+      toast({
+        title: "Verification Required",
+        description: "Please enter the verification code",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const { error } = await signInWith2FA(twoFactorCode);
+      if (error) {
+        toast({
+          title: "Verification Failed",
+          description: "Invalid verification code. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("2FA error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -144,7 +176,45 @@ const Auth = () => {
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {requires2FA ? (
+            <form onSubmit={handle2FASubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="twoFactorCode">Two-Factor Authentication Code</Label>
+                <div className="relative">
+                  <Shield className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="twoFactorCode"
+                    type="text"
+                    placeholder="Enter 6-digit code"
+                    value={twoFactorCode}
+                    onChange={(e) => setTwoFactorCode(e.target.value)}
+                    className="pl-10 text-center font-mono text-lg tracking-widest"
+                    maxLength={6}
+                    disabled={isLoading}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Enter the 6-digit code from your authenticator app
+                </p>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isLoading || twoFactorCode.length !== 6}
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Verifying...
+                  </div>
+                ) : (
+                  "Verify & Sign In"
+                )}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <div className="space-y-2">
                 <Label htmlFor="displayName">Display Name</Label>
@@ -265,38 +335,43 @@ const Auth = () => {
                 isSignUp ? "Create Account" : "Sign In"
               )}
             </Button>
-          </form>
+            </form>
+          )}
 
-          <div className="mt-6">
-            <Separator />
-            <div className="mt-4 text-center text-sm">
-              {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-              <Button
-                variant="link"
-                onClick={toggleMode}
-                className="p-0 h-auto font-semibold"
-                disabled={isLoading}
-              >
-                {isSignUp ? "Sign In" : "Sign Up"}
-              </Button>
-            </div>
-          </div>
-
-          {isSignUp && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-start gap-2">
-                <Shield className="h-4 w-4 text-blue-600 mt-0.5" />
-                <div className="text-xs text-blue-800">
-                  <p className="font-medium">Security Features Included:</p>
-                  <ul className="mt-1 space-y-1">
-                    <li>• End-to-end encryption for all data</li>
-                    <li>• Two-factor authentication support</li>
-                    <li>• Secure call recording storage</li>
-                    <li>• Privacy-compliant data handling</li>
-                  </ul>
+          {!requires2FA && (
+            <>
+              <div className="mt-6">
+                <Separator />
+                <div className="mt-4 text-center text-sm">
+                  {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+                  <Button
+                    variant="link"
+                    onClick={toggleMode}
+                    className="p-0 h-auto font-semibold"
+                    disabled={isLoading}
+                  >
+                    {isSignUp ? "Sign In" : "Sign Up"}
+                  </Button>
                 </div>
               </div>
-            </div>
+
+              {isSignUp && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Shield className="h-4 w-4 text-blue-600 mt-0.5" />
+                    <div className="text-xs text-blue-800">
+                      <p className="font-medium">Security Features Included:</p>
+                      <ul className="mt-1 space-y-1">
+                        <li>• End-to-end encryption for all data</li>
+                        <li>• Two-factor authentication support</li>
+                        <li>• Secure call recording storage</li>
+                        <li>• Privacy-compliant data handling</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
