@@ -186,8 +186,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const verify2FA = async (token: string) => {
     try {
+      // Get the current unverified factor
+      const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
+      
+      if (factorsError) throw factorsError;
+      
+      const unverifiedFactor = factors.totp.find(factor => factor.status === 'unverified');
+      
+      if (!unverifiedFactor) {
+        throw new Error('No unverified factor found. Please start the setup process again.');
+      }
+
       const { data, error } = await supabase.auth.mfa.challengeAndVerify({
-        factorId: session?.user?.factors?.[0]?.id || '',
+        factorId: unverifiedFactor.id,
         code: token
       });
 
