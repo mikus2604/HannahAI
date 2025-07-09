@@ -431,6 +431,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_update_user_profile: {
+        Args: {
+          target_user_id: string
+          new_plan_type: string
+          new_plan_expires_at: string
+        }
+        Returns: boolean
+      }
       can_user_add_greeting: {
         Args: { user_uuid: string }
         Returns: boolean

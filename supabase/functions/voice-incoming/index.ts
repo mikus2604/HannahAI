@@ -34,6 +34,48 @@ serve(async (req) => {
     const digits = formData.get('Digits') as string || '';
 
     console.log('=== VOICE WEBHOOK CALLED ===', { callSid, from, to, callStatus, speechResult, digits });
+
+    // Handle call status updates (when call ends)
+    if (callStatus === 'completed' || callStatus === 'busy' || callStatus === 'failed' || callStatus === 'no-answer') {
+      const { data: existingCall } = await supabase
+        .from('calls')
+        .select('*')
+        .eq('twilio_call_sid', callSid)
+        .single();
+
+      if (existingCall) {
+        // Determine final status based on call progress
+        let finalStatus = 'failed'; // Default for premature hangups
+        if (callStatus === 'completed') {
+          const { data: session } = await supabase
+            .from('call_sessions')
+            .select('current_state, collected_data')
+            .eq('call_id', existingCall.id)
+            .single();
+
+          if (session) {
+            if (session.current_state === 'ending') {
+              finalStatus = 'completed'; // Proper completion
+            } else if (session.current_state === 'confirming' || session.current_state === 'collecting_info') {
+              finalStatus = 'partial_completed'; // Some data collected
+            }
+          }
+        }
+
+        await supabase
+          .from('calls')
+          .update({ 
+            call_status: finalStatus,
+            ended_at: new Date().toISOString()
+          })
+          .eq('twilio_call_sid', callSid);
+      }
+
+      // Return empty response for status webhooks
+      return new Response('', {
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+      });
+    }
     console.log('Request method:', req.method);
     console.log('Content-Type:', req.headers.get('content-type'));
 
@@ -47,7 +89,7 @@ serve(async (req) => {
 
     if (!phoneAssignment) {
       console.error('No user found for phone number:', to);
-    const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+      const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Polly.Joanna" prosodyRate="medium">This number is not configured. Please contact support.</Say>
     <Hangup/>
@@ -72,7 +114,7 @@ serve(async (req) => {
           twilio_call_sid: callSid,
           from_number: from,
           to_number: to,
-          call_status: callStatus,
+          call_status: 'in-progress',
           user_id: phoneAssignment.user_id
         })
         .select()
@@ -247,7 +289,7 @@ serve(async (req) => {
     }
 
     // Handle call ending scenarios
-    if (callStatus === 'completed' || callStatus === 'partial_completed' || nextState === DIALOGUE_STATES.ENDING) {
+    if (call.call_status === 'completed' || call.call_status === 'partial_completed' || nextState === DIALOGUE_STATES.ENDING) {
       // End the call properly
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
