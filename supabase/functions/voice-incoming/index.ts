@@ -223,6 +223,13 @@ serve(async (req) => {
           message: speechResult
         });
 
+      // Get conversation history for context
+      const { data: transcripts } = await supabase
+        .from('transcripts')
+        .select('speaker, message')
+        .eq('call_id', call.id)
+        .order('timestamp', { ascending: true });
+
       // Create system prompt with user's custom instructions and assistant name
       const contactInfo = userProfile ? `
 Contact Information (you can share this if asked):
@@ -246,14 +253,40 @@ Available Services (only provide these if enabled):
               Rules:
               - Be natural, conversational and professional
               - ONLY provide services that are enabled above
-              - Keep responses under 50 words
+              - Keep responses under 30 words
+              - Remember what was discussed already - don't repeat questions
+              - Build on the conversation naturally
               - If greeting state, welcome them and ask how you can help
               - If collecting info, gather missing details
               - If confirming, summarize and confirm details
               - If ending, provide closure and next steps
               - Speak naturally without robotic phrases`;
 
-      // Get ChatGPT response with improved settings for natural conversation
+      // Build conversation history for ChatGPT context
+      const conversationMessages = [
+        {
+          role: 'system',
+          content: systemPrompt
+        }
+      ];
+
+      // Add conversation history
+      if (transcripts && transcripts.length > 0) {
+        transcripts.slice(-10).forEach(transcript => { // Only last 10 exchanges
+          conversationMessages.push({
+            role: transcript.speaker === 'caller' ? 'user' : 'assistant',
+            content: transcript.message
+          });
+        });
+      }
+
+      // Add current user input
+      conversationMessages.push({
+        role: 'user',
+        content: speechResult
+      });
+
+      // Get ChatGPT response with conversation context
       const chatGptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -261,21 +294,12 @@ Available Services (only provide these if enabled):
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            {
-              role: 'system',
-              content: systemPrompt
-            },
-            {
-              role: 'user',
-              content: speechResult
-            }
-          ],
-          max_tokens: 200,
-          temperature: 0.8,
-          presence_penalty: 0.3,
-          frequency_penalty: 0.2
+          model: 'gpt-4o-mini',
+          messages: conversationMessages,
+          max_tokens: 150,
+          temperature: 0.7,
+          presence_penalty: 0.2,
+          frequency_penalty: 0.3
         }),
       });
 
@@ -383,7 +407,7 @@ Available Services (only provide these if enabled):
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Polly.Joanna" prosodyRate="medium">${response}</Say>
-    <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="2" timeout="8">
+    <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="1" timeout="4">
     </Gather>
     <Say voice="Polly.Joanna" prosodyRate="medium">I didn't hear anything. Thank you for calling. Goodbye!</Say>
     <Record action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" transcribe="true" recordingStatusCallback="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" maxLength="300" />
