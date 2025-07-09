@@ -154,7 +154,13 @@ serve(async (req) => {
       session = newSession;
     }
 
-    // Get user's greeting messages and system prompt
+    // Get user's assistant settings, greeting messages and system prompt
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('assistant_name, opening_message, contact_phone, contact_email, website, office_address')
+      .eq('user_id', phoneAssignment.user_id)
+      .single();
+
     const { data: greetings } = await supabase
       .from('greeting_messages')
       .select('*')
@@ -171,6 +177,8 @@ serve(async (req) => {
 
     const activeGreeting = greetings?.[0];
     const activeSystemPrompt = systemPrompts?.[0];
+    const assistantName = userProfile?.assistant_name || 'Assistant';
+    const openingMessage = userProfile?.opening_message || 'Hello! Thank you for calling. How may I help you today?';
 
     // Process speech input with ChatGPT if provided
     let response = '';
@@ -186,19 +194,28 @@ serve(async (req) => {
           message: speechResult
         });
 
-      // Create system prompt with user's custom instructions
-      const systemPrompt = activeSystemPrompt?.prompt || `You are a professional AI receptionist for this business. Current state: ${session.current_state}. 
+      // Create system prompt with user's custom instructions and assistant name
+      const contactInfo = userProfile ? `
+Contact Information (you can share this if asked):
+- Phone: ${userProfile.contact_phone || 'Not provided'}
+- Email: ${userProfile.contact_email || 'Not provided'} 
+- Website: ${userProfile.website || 'Not provided'}
+- Address: ${userProfile.office_address || 'Not provided'}` : '';
+
+      const systemPrompt = activeSystemPrompt?.prompt || `You are ${assistantName}, a professional AI receptionist for this business. Current state: ${session.current_state}. 
               Collected data: ${JSON.stringify(session.collected_data)}.
+              ${contactInfo}
               
               Rules:
-              - Be concise and professional
+              - Be natural, conversational and professional
               - Ask for name, reason for calling, and callback number if needed
               - Confirm information before ending
               - Keep responses under 50 words
               - If greeting state, welcome them and ask how you can help
               - If collecting info, gather missing details
               - If confirming, summarize and confirm details
-              - If ending, provide closure and next steps`;
+              - If ending, provide closure and next steps
+              - Speak naturally without robotic phrases like "please go ahead and speak"`;
 
       // Get ChatGPT response with improved settings for natural conversation
       const chatGptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -276,8 +293,8 @@ serve(async (req) => {
         .eq('id', session.id);
 
     } else {
-      // Use custom greeting or default
-      response = activeGreeting?.message || "Hello! Thank you for calling. How may I help you today?";
+      // Use custom opening message from user's assistant settings
+      response = openingMessage;
       
       await supabase
         .from('transcripts')
@@ -301,12 +318,11 @@ serve(async (req) => {
       });
     }
 
-    // Generate TwiML response with natural voice settings
+    // Generate TwiML response with natural voice settings (no robotic prompts)
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Polly.Joanna" prosodyRate="medium">${response}</Say>
-    <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="4" timeout="15" partialResultCallback="true">
-        <Say voice="Polly.Joanna" prosodyRate="medium">Please go ahead and speak.</Say>
+    <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="3" timeout="10" partialResultCallback="true">
     </Gather>
     <Say voice="Polly.Joanna" prosodyRate="medium">I didn't hear anything. Thank you for calling. Goodbye!</Say>
     <Hangup/>

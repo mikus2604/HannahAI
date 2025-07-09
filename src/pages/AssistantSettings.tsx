@@ -20,6 +20,10 @@ import UsageOverview from "@/components/UsageOverview";
 const formSchema = z.object({
   assistantName: z.string().min(1, "Assistant name is required"),
   openingMessage: z.string().min(1, "Opening message is required"),
+  contactPhone: z.string().optional(),
+  contactEmail: z.string().email().optional().or(z.literal("")),
+  website: z.string().url().optional().or(z.literal("")),
+  officeAddress: z.string().optional(),
   services: z.object({
     takeContactInfo: z.boolean(),
     provideContactDetails: z.boolean(),
@@ -58,8 +62,12 @@ const AssistantSettings = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      assistantName: "Hannah",
-      openingMessage: "Hello! Thank you for calling. I'm Hannah, your AI assistant. How may I help you today?",
+      assistantName: "Assistant",
+      openingMessage: "Hello! Thank you for calling. How may I help you today?",
+      contactPhone: "",
+      contactEmail: "",
+      website: "",
+      officeAddress: "",
       services: {
         takeContactInfo: true,
         provideContactDetails: false,
@@ -76,12 +84,66 @@ const AssistantSettings = () => {
     },
   });
 
-  const onSubmit = (data: FormData) => {
-    console.log(data);
-    toast({
-      title: "Settings saved",
-      description: "Your assistant settings have been updated successfully.",
-    });
+  // Load user's assistant settings
+  useEffect(() => {
+    if (!user) return;
+
+    const loadAssistantSettings = async () => {
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('assistant_name, opening_message, contact_phone, contact_email, website, office_address')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error) throw error;
+
+        if (profile) {
+          form.setValue('assistantName', profile.assistant_name || 'Assistant');
+          form.setValue('openingMessage', profile.opening_message || 'Hello! Thank you for calling. How may I help you today?');
+          form.setValue('contactPhone', profile.contact_phone || '');
+          form.setValue('contactEmail', profile.contact_email || '');
+          form.setValue('website', profile.website || '');
+          form.setValue('officeAddress', profile.office_address || '');
+        }
+      } catch (error) {
+        console.error('Error loading assistant settings:', error);
+      }
+    };
+
+    loadAssistantSettings();
+  }, [user, form]);
+
+  const onSubmit = async (data: FormData) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          assistant_name: data.assistantName,
+          opening_message: data.openingMessage,
+          contact_phone: data.contactPhone || null,
+          contact_email: data.contactEmail || null,
+          website: data.website || null,
+          office_address: data.officeAddress || null,
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Settings saved",
+        description: "Your assistant settings have been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast({
+        title: "Error saving settings",
+        description: "Failed to save your assistant settings. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRecordingChange = (value: string) => {
@@ -129,7 +191,7 @@ const AssistantSettings = () => {
                 Basic Information
               </CardTitle>
               <CardDescription>
-                Set up your assistant's identity and initial greeting
+                Set up your assistant's identity, initial greeting, and contact information that can be disclosed to callers
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -170,6 +232,82 @@ const AssistantSettings = () => {
                   </FormItem>
                 )}
               />
+
+              <div className="space-y-4 pt-4 border-t">
+                <h4 className="font-medium text-sm text-muted-foreground">Contact Information (optional - can be disclosed to callers)</h4>
+                
+                <FormField
+                  control={form.control}
+                  name="contactPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Phone Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., +1 (555) 123-4567" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Phone number that can be shared with callers
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="contactEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Email Address</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., contact@yourcompany.com" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Email address that can be shared with callers
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="website"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Website URL</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., https://www.yourcompany.com" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Website URL that can be shared with callers
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="officeAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Office Address</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="e.g., 123 Main St, Suite 100, City, State 12345"
+                          className="min-h-[80px]"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Physical address that can be shared with callers
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </CardContent>
           </Card>
 

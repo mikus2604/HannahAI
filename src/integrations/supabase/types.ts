@@ -192,11 +192,16 @@ export type Database = {
       }
       profiles: {
         Row: {
+          assistant_name: string | null
           authenticator_app: string | null
           avatar_url: string | null
+          contact_email: string | null
+          contact_phone: string | null
           created_at: string
           display_name: string | null
           id: string
+          office_address: string | null
+          opening_message: string | null
           phone_number: string | null
           plan_expires_at: string | null
           plan_type: string
@@ -204,13 +209,19 @@ export type Database = {
           two_factor_enabled: boolean
           updated_at: string
           user_id: string
+          website: string | null
         }
         Insert: {
+          assistant_name?: string | null
           authenticator_app?: string | null
           avatar_url?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
+          office_address?: string | null
+          opening_message?: string | null
           phone_number?: string | null
           plan_expires_at?: string | null
           plan_type?: string
@@ -218,13 +229,19 @@ export type Database = {
           two_factor_enabled?: boolean
           updated_at?: string
           user_id: string
+          website?: string | null
         }
         Update: {
+          assistant_name?: string | null
           authenticator_app?: string | null
           avatar_url?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
+          office_address?: string | null
+          opening_message?: string | null
           phone_number?: string | null
           plan_expires_at?: string | null
           plan_type?: string
@@ -232,6 +249,7 @@ export type Database = {
           two_factor_enabled?: boolean
           updated_at?: string
           user_id?: string
+          website?: string | null
         }
         Relationships: []
       }
