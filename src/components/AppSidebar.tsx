@@ -1,4 +1,4 @@
-import { PhoneCall, Settings, Database, FileText, Shield, Crown, LogOut } from "lucide-react";
+import { PhoneCall, Settings, Database, FileText, Shield, Crown, LogOut, Phone } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -143,6 +143,24 @@ export function AppSidebar() {
                     >
                       <Shield className="h-4 w-4" />
                       <span>Admin Dashboard</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/twilio"
+                      className={({ isActive }) =>
+                        cn(
+                          "flex items-center gap-2 p-2 rounded-lg transition-colors",
+                          isActive
+                            ? "bg-red-100 text-red-900 font-medium"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        )
+                      }
+                    >
+                      <Phone className="h-4 w-4" />
+                      <span>Twilio Management</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

@@ -33,9 +33,29 @@ serve(async (req) => {
     const speechResult = formData.get('SpeechResult') as string || '';
     const digits = formData.get('Digits') as string || '';
 
-    console.log('=== WEBHOOK CALLED ===', { callSid, from, to, callStatus, speechResult, digits });
+    console.log('=== VOICE WEBHOOK CALLED ===', { callSid, from, to, callStatus, speechResult, digits });
     console.log('Request method:', req.method);
     console.log('Content-Type:', req.headers.get('content-type'));
+
+    // Find the user who owns this phone number
+    const { data: phoneAssignment } = await supabase
+      .from('phone_assignments')
+      .select('user_id')
+      .eq('phone_number', to)
+      .eq('is_active', true)
+      .single();
+
+    if (!phoneAssignment) {
+      console.error('No user found for phone number:', to);
+      const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="alice">This number is not configured. Please contact support.</Say>
+    <Hangup/>
+</Response>`;
+      return new Response(errorTwiml, {
+        headers: { ...corsHeaders, 'Content-Type': 'text/xml' },
+      });
+    }
 
     // Get or create call record
     let { data: call, error: callError } = await supabase
@@ -52,7 +72,8 @@ serve(async (req) => {
           twilio_call_sid: callSid,
           from_number: from,
           to_number: to,
-          call_status: callStatus
+          call_status: callStatus,
+          user_id: phoneAssignment.user_id
         })
         .select()
         .single();

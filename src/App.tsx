@@ -17,6 +17,7 @@ import Security from "./pages/Security";
 import NotFound from "./pages/NotFound";
 import PremiumFeatures from "./pages/PremiumFeatures";
 import SuperUserDashboard from "./pages/SuperUserDashboard";
+import TwilioManagement from "./pages/TwilioManagement";
 
 const queryClient = new QueryClient();
 
@@ -84,6 +85,7 @@ const AppLayout = () => {
               <Route path="/plans" element={<PlanManagement />} />
               <Route path="/premium-features" element={<PremiumFeatures />} />
               <Route path="/admin" element={<SuperUserDashboard />} />
+              <Route path="/twilio" element={<TwilioManagement />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
