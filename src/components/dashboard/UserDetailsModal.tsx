@@ -44,6 +44,7 @@ interface UserDetails {
   total_spent: number;
   last_call_date: string | null;
   is_super_user: boolean;
+  assigned_phone_numbers: string[];
 }
 
 export const UserDetailsModal = ({ isOpen, onClose, userId }: UserDetailsModalProps) => {
@@ -276,6 +277,23 @@ export const UserDetailsModal = ({ isOpen, onClose, userId }: UserDetailsModalPr
                     <div>
                       <Label className="text-sm font-medium">Phone Number</Label>
                       <p className="text-sm text-muted-foreground">{userDetails.phone_number || 'Not provided'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <Label className="text-sm font-medium">Assigned Phone Numbers</Label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {userDetails.assigned_phone_numbers?.length > 0 ? (
+                          userDetails.assigned_phone_numbers.map((number, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {number}
+                            </Badge>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No numbers assigned</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

@@ -24,7 +24,13 @@ serve(async (req) => {
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
+      { 
+        auth: { 
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false
+        } 
+      }
     );
 
     // Verify admin user authorization
@@ -110,17 +116,36 @@ serve(async (req) => {
       const now = new Date().toISOString();
       const planExpiresAt = newPlan === 'free' ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(); // 1 year from now
       
-      // Update profiles table
-      const { error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .update({
-          plan_type: newPlan,
-          plan_expires_at: planExpiresAt,
-          updated_at: now
-        })
-        .eq('user_id', userId);
+      // Update profiles table using RPC to avoid RLS issues
+      const { data: updateResult, error: profileError } = await supabaseAdmin
+        .rpc('admin_update_user_profile', {
+          target_user_id: userId,
+          new_plan_type: newPlan,
+          new_plan_expires_at: planExpiresAt
+        });
       
-      if (profileError) throw new Error(`Failed to update profile: ${profileError.message}`);
+      if (profileError) {
+        logStep("Profile update error", profileError);
+        
+        // Fallback: Try direct update with service role
+        const { error: directUpdateError } = await supabaseAdmin
+          .from('profiles')
+          .update({
+            plan_type: newPlan,
+            plan_expires_at: planExpiresAt,
+            updated_at: now
+          })
+          .eq('user_id', userId);
+        
+        if (directUpdateError) {
+          logStep("Direct update also failed", directUpdateError);
+          throw new Error(`Failed to update profile: ${directUpdateError.message}`);
+        }
+        
+        logStep("Fallback direct update succeeded");
+      } else {
+        logStep("RPC update succeeded", updateResult);
+      }
       
       // Update or insert subscribers table
       const subscriptionTier = newPlan === 'free' ? null : 

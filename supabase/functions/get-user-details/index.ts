@@ -91,6 +91,15 @@ serve(async (req) => {
       _role: 'super_user'
     });
 
+    // Get assigned phone numbers
+    const { data: phoneAssignments } = await supabaseClient
+      .from('phone_assignments')
+      .select('phone_number')
+      .eq('user_id', userId)
+      .eq('is_active', true);
+
+    const assignedPhoneNumbers = phoneAssignments?.map(p => p.phone_number) || [];
+
     const result = {
       id: userId,
       email: authUser.user?.email || '',
@@ -104,7 +113,8 @@ serve(async (req) => {
       total_calls: totalCalls,
       total_spent: totalSpent,
       last_call_date: lastCallDate,
-      is_super_user: userHasSuperRole || false
+      is_super_user: userHasSuperRole || false,
+      assigned_phone_numbers: assignedPhoneNumbers
     };
 
     logStep("User details retrieved successfully", { userId });

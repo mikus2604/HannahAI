@@ -146,24 +146,6 @@ export function AppSidebar() {
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/twilio"
-                      className={({ isActive }) =>
-                        cn(
-                          "flex items-center gap-2 p-2 rounded-lg transition-colors",
-                          isActive
-                            ? "bg-red-100 text-red-900 font-medium"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                        )
-                      }
-                    >
-                      <Phone className="h-4 w-4" />
-                      <span>Twilio Management</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

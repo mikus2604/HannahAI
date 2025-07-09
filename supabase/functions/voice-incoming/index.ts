@@ -47,9 +47,9 @@ serve(async (req) => {
 
     if (!phoneAssignment) {
       console.error('No user found for phone number:', to);
-      const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+    const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="Polly.Amy">This number is not configured. Please contact support.</Say>
+    <Say voice="Polly.Joanna" prosodyRate="medium">This number is not configured. Please contact support.</Say>
     <Hangup/>
 </Response>`;
       return new Response(errorTwiml, {
@@ -158,7 +158,7 @@ serve(async (req) => {
               - If confirming, summarize and confirm details
               - If ending, provide closure and next steps`;
 
-      // Get ChatGPT response
+      // Get ChatGPT response with improved settings for natural conversation
       const chatGptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -166,7 +166,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-4o',
           messages: [
             {
               role: 'system',
@@ -177,24 +177,43 @@ serve(async (req) => {
               content: speechResult
             }
           ],
-          max_tokens: 150,
-          temperature: 0.7
+          max_tokens: 200,
+          temperature: 0.8,
+          presence_penalty: 0.3,
+          frequency_penalty: 0.2
         }),
       });
 
       const chatData = await chatGptResponse.json();
       response = chatData.choices[0].message.content;
 
-      // Determine next state based on content
+      // Determine next state and call status based on content and context
+      let callStatus = call.call_status;
+      const lowerResponse = response.toLowerCase();
+      const lowerSpeech = speechResult.toLowerCase();
+      
       if (session.current_state === DIALOGUE_STATES.GREETING && speechResult.length > 0) {
         nextState = DIALOGUE_STATES.COLLECTING_INFO;
-      } else if (session.current_state === DIALOGUE_STATES.COLLECTING_INFO && 
-                 speechResult.toLowerCase().includes('confirm') || 
-                 speechResult.toLowerCase().includes('yes')) {
-        nextState = DIALOGUE_STATES.CONFIRMING;
+        callStatus = 'in-progress';
+      } else if (session.current_state === DIALOGUE_STATES.COLLECTING_INFO) {
+        if (lowerSpeech.includes('confirm') || lowerSpeech.includes('yes') || 
+            lowerSpeech.includes('correct') || lowerSpeech.includes('right')) {
+          nextState = DIALOGUE_STATES.CONFIRMING;
+          callStatus = 'partial_completed'; // Data was collected
+        }
       } else if (session.current_state === DIALOGUE_STATES.CONFIRMING) {
         nextState = DIALOGUE_STATES.ENDING;
+        if (lowerResponse.includes('goodbye') || lowerResponse.includes('thank you') || 
+            lowerResponse.includes('have a') || lowerResponse.includes('take care')) {
+          callStatus = 'completed'; // Proper goodbye
+        }
       }
+      
+      // Update call status
+      await supabase
+        .from('calls')
+        .update({ call_status: callStatus })
+        .eq('id', call.id);
 
       // Save AI response to transcripts
       await supabase
@@ -227,14 +246,27 @@ serve(async (req) => {
         });
     }
 
-    // Generate TwiML response with more human voice
+    // Handle call ending scenarios
+    if (callStatus === 'completed' || callStatus === 'partial_completed' || nextState === DIALOGUE_STATES.ENDING) {
+      // End the call properly
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Polly.Joanna" prosodyRate="medium">${response}</Say>
+    <Hangup/>
+</Response>`;
+      return new Response(twiml, {
+        headers: { ...corsHeaders, 'Content-Type': 'text/xml' },
+      });
+    }
+
+    // Generate TwiML response with natural voice settings
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="Polly.Amy">${response}</Say>
-    <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="3" timeout="10">
-        <Say voice="Polly.Amy">Please speak after the tone.</Say>
+    <Say voice="Polly.Joanna" prosodyRate="medium">${response}</Say>
+    <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="4" timeout="15" partialResultCallback="true">
+        <Say voice="Polly.Joanna" prosodyRate="medium">Please go ahead and speak.</Say>
     </Gather>
-    <Say voice="Polly.Amy">Thank you for calling. Goodbye!</Say>
+    <Say voice="Polly.Joanna" prosodyRate="medium">I didn't hear anything. Thank you for calling. Goodbye!</Say>
     <Hangup/>
 </Response>`;
 
@@ -250,7 +282,7 @@ serve(async (req) => {
     
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="Polly.Amy">I'm sorry, I'm experiencing technical difficulties. Please try again later.</Say>
+    <Say voice="Polly.Joanna" prosodyRate="medium">I'm sorry, I'm experiencing technical difficulties. Please try again later.</Say>
     <Hangup/>
 </Response>`;
 
