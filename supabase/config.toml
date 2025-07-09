@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.grant-super-user]
 verify_jwt = false
+
+[functions.configure-twilio-recording]
+verify_jwt = false

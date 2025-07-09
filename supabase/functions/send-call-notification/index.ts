@@ -30,7 +30,7 @@ serve(async (req) => {
       );
     }
 
-    const { callId, userId, notificationType = 'immediate' } = await req.json();
+    const { callId, userId, userEmail, notificationType = 'immediate' } = await req.json();
     
     console.log('Sending notification for call:', callId, 'to user:', userId);
 
@@ -55,9 +55,10 @@ serve(async (req) => {
       );
     }
 
-    // Get user email (in a real app, you'd have user profiles)
-    // For now, we'll assume the email is passed in the request
-    const userEmail = 'user@example.com'; // This should come from user profile
+    // Use the provided user email
+    if (!userEmail) {
+      throw new Error('User email is required');
+    }
 
     // Format call duration
     const formatDuration = (seconds: number) => {

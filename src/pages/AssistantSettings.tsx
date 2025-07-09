@@ -92,7 +92,7 @@ const AssistantSettings = () => {
       try {
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('assistant_name, opening_message, contact_phone, contact_email, website, office_address')
+          .select('assistant_name, opening_message, contact_phone, contact_email, website, office_address, assistant_services')
           .eq('user_id', user.id)
           .single();
 
@@ -105,6 +105,15 @@ const AssistantSettings = () => {
           form.setValue('contactEmail', profile.contact_email || '');
           form.setValue('website', profile.website || '');
           form.setValue('officeAddress', profile.office_address || '');
+          
+          // Load assistant services
+          if (profile.assistant_services && typeof profile.assistant_services === 'object') {
+            const services = profile.assistant_services as any;
+            form.setValue('services.takeContactInfo', services.takeContactInfo ?? true);
+            form.setValue('services.provideContactDetails', services.provideContactDetails ?? false);
+            form.setValue('services.sayMessage', services.sayMessage ?? true);
+            form.setValue('services.bookMeeting', services.bookMeeting ?? false);
+          }
         }
       } catch (error) {
         console.error('Error loading assistant settings:', error);
@@ -127,6 +136,12 @@ const AssistantSettings = () => {
           contact_email: data.contactEmail || null,
           website: data.website || null,
           office_address: data.officeAddress || null,
+          assistant_services: {
+            takeContactInfo: data.services.takeContactInfo,
+            provideContactDetails: data.services.provideContactDetails,
+            sayMessage: data.services.sayMessage,
+            bookMeeting: data.services.bookMeeting,
+          },
         })
         .eq('user_id', user.id);
 

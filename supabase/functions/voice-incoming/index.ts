@@ -32,8 +32,31 @@ serve(async (req) => {
     const callStatus = formData.get('CallStatus') as string;
     const speechResult = formData.get('SpeechResult') as string || '';
     const digits = formData.get('Digits') as string || '';
+    const recordingUrl = formData.get('RecordingUrl') as string;
+    const recordingSid = formData.get('RecordingSid') as string;
 
-    console.log('=== VOICE WEBHOOK CALLED ===', { callSid, from, to, callStatus, speechResult, digits });
+    console.log('=== VOICE WEBHOOK CALLED ===', { callSid, from, to, callStatus, speechResult, digits, recordingUrl });
+    
+    // Handle recording URL callback
+    if (recordingUrl && recordingSid) {
+      console.log('Recording callback received:', { recordingUrl, recordingSid });
+      
+      // Update call with recording URL and set expiration (7 days from now)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+      
+      await supabase
+        .from('calls')
+        .update({ 
+          recording_url: recordingUrl,
+          recording_expires_at: expiresAt.toISOString()
+        })
+        .eq('twilio_call_sid', callSid);
+        
+      return new Response('Recording processed', {
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+      });
+    }
 
     // Handle call status updates (when call ends)
     if (callStatus === 'completed' || callStatus === 'busy' || callStatus === 'failed' || callStatus === 'no-answer') {
@@ -157,7 +180,7 @@ serve(async (req) => {
     // Get user's assistant settings, greeting messages and system prompt
     const { data: userProfile } = await supabase
       .from('profiles')
-      .select('assistant_name, opening_message, contact_phone, contact_email, website, office_address')
+      .select('assistant_name, opening_message, contact_phone, contact_email, website, office_address, assistant_services')
       .eq('user_id', phoneAssignment.user_id)
       .single();
 
@@ -179,6 +202,12 @@ serve(async (req) => {
     const activeSystemPrompt = systemPrompts?.[0];
     const assistantName = userProfile?.assistant_name || 'Assistant';
     const openingMessage = userProfile?.opening_message || 'Hello! Thank you for calling. How may I help you today?';
+    const assistantServices = userProfile?.assistant_services || {
+      takeContactInfo: true,
+      provideContactDetails: false,
+      sayMessage: true,
+      bookMeeting: false
+    };
 
     // Process speech input with ChatGPT if provided
     let response = '';
@@ -202,20 +231,27 @@ Contact Information (you can share this if asked):
 - Website: ${userProfile.website || 'Not provided'}
 - Address: ${userProfile.office_address || 'Not provided'}` : '';
 
+      const serviceRules = `
+Available Services (only provide these if enabled):
+- ${assistantServices.takeContactInfo ? 'CAN' : 'CANNOT'} collect name and contact information for callbacks
+- ${assistantServices.provideContactDetails ? 'CAN' : 'CANNOT'} share business contact information  
+- ${assistantServices.sayMessage ? 'CAN' : 'CANNOT'} deliver messages to callers
+- ${assistantServices.bookMeeting ? 'CAN' : 'CANNOT'} schedule meetings`;
+
       const systemPrompt = activeSystemPrompt?.prompt || `You are ${assistantName}, a professional AI receptionist for this business. Current state: ${session.current_state}. 
               Collected data: ${JSON.stringify(session.collected_data)}.
               ${contactInfo}
+              ${serviceRules}
               
               Rules:
               - Be natural, conversational and professional
-              - Ask for name, reason for calling, and callback number if needed
-              - Confirm information before ending
+              - ONLY provide services that are enabled above
               - Keep responses under 50 words
               - If greeting state, welcome them and ask how you can help
               - If collecting info, gather missing details
               - If confirming, summarize and confirm details
               - If ending, provide closure and next steps
-              - Speak naturally without robotic phrases like "please go ahead and speak"`;
+              - Speak naturally without robotic phrases`;
 
       // Get ChatGPT response with improved settings for natural conversation
       const chatGptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -268,11 +304,36 @@ Contact Information (you can share this if asked):
         }
       }
       
-      // Update call status
+      // Update call status and set ended_at timestamp when call completes
+      const updateData: any = { call_status: callStatus };
+      if (callStatus === 'completed' || callStatus === 'partial_completed') {
+        updateData.ended_at = new Date().toISOString();
+      }
+      
       await supabase
         .from('calls')
-        .update({ call_status: callStatus })
+        .update(updateData)
         .eq('id', call.id);
+        
+      // Send email notification if call is completed and user has notifications enabled  
+      if ((callStatus === 'completed' || callStatus === 'partial_completed')) {
+        try {
+          // Get user email from auth.users
+          const { data: { user: authUser }, error: authError } = await supabase.auth.admin.getUserById(phoneAssignment.user_id);
+          
+          if (!authError && authUser?.email) {
+            await supabase.functions.invoke('send-call-notification', {
+              body: { 
+                callId: call.id, 
+                userId: phoneAssignment.user_id,
+                userEmail: authUser.email
+              }
+            });
+          }
+        } catch (notificationError) {
+          console.error('Error sending notification:', notificationError);
+        }
+      }
 
       // Save AI response to transcripts
       await supabase
@@ -318,13 +379,14 @@ Contact Information (you can share this if asked):
       });
     }
 
-    // Generate TwiML response with natural voice settings (no robotic prompts)
+    // Generate TwiML response with recording enabled and natural conversation flow
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Polly.Joanna" prosodyRate="medium">${response}</Say>
-    <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="3" timeout="10" partialResultCallback="true">
+    <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="2" timeout="8">
     </Gather>
     <Say voice="Polly.Joanna" prosodyRate="medium">I didn't hear anything. Thank you for calling. Goodbye!</Say>
+    <Record action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" transcribe="true" recordingStatusCallback="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" maxLength="300" />
     <Hangup/>
 </Response>`;
 

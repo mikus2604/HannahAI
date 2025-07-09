@@ -193,6 +193,7 @@ export type Database = {
       profiles: {
         Row: {
           assistant_name: string | null
+          assistant_services: Json | null
           authenticator_app: string | null
           avatar_url: string | null
           contact_email: string | null
@@ -213,6 +214,7 @@ export type Database = {
         }
         Insert: {
           assistant_name?: string | null
+          assistant_services?: Json | null
           authenticator_app?: string | null
           avatar_url?: string | null
           contact_email?: string | null
@@ -233,6 +235,7 @@ export type Database = {
         }
         Update: {
           assistant_name?: string | null
+          assistant_services?: Json | null
           authenticator_app?: string | null
           avatar_url?: string | null
           contact_email?: string | null
