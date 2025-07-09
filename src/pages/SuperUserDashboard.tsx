@@ -36,6 +36,9 @@ import {
 import GrantSuperUser from "@/components/GrantSuperUser";
 import { UserPlanManager } from "@/components/dashboard/UserPlanManager";
 import { UserDetailsModal } from "@/components/dashboard/UserDetailsModal";
+import { TwilioManagement } from "@/components/TwilioManagement";
+import { SystemPromptManagement } from "@/components/SystemPromptManagement";
+import { CallAnalyticsChart } from "@/components/analytics/CallAnalyticsChart";
 
 interface AdminAnalytics {
   analytics: {
@@ -341,14 +344,14 @@ const SuperUserDashboard = () => {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="revenue">Revenue</TabsTrigger>
           <TabsTrigger value="calls">Calls</TabsTrigger>
+          <TabsTrigger value="twilio">Twilio</TabsTrigger>
+          <TabsTrigger value="prompts">Prompts</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
-          <TabsTrigger value="admin">Admin</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -597,7 +600,15 @@ const SuperUserDashboard = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="admin" className="space-y-4">
+        <TabsContent value="twilio" className="space-y-4">
+          <TwilioManagement />
+        </TabsContent>
+
+        <TabsContent value="prompts" className="space-y-4">
+          <SystemPromptManagement />
+        </TabsContent>
+
+        <TabsContent value="system" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
