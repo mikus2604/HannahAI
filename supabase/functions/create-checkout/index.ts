@@ -61,7 +61,7 @@ serve(async (req) => {
       logStep("No existing customer found");
     }
 
-    // Create session configuration
+    // Create session configuration with automatic renewal
     const sessionConfig: any = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -71,10 +71,13 @@ serve(async (req) => {
             currency: currency,
             product_data: { 
               name: `${planName} Subscription`,
-              description: `Monthly subscription to ${planName} plan`
+              description: `Monthly subscription to ${planName} plan with automatic renewal`
             },
             unit_amount: priceAmount,
-            recurring: { interval: "month" },
+            recurring: { 
+              interval: "month",
+              interval_count: 1
+            },
           },
           quantity: 1,
         },
@@ -84,6 +87,13 @@ serve(async (req) => {
       cancel_url: `${req.headers.get("origin")}/plans?canceled=true`,
       allow_promotion_codes: true,
       billing_address_collection: 'required',
+      payment_method_collection: 'always',
+      subscription_data: {
+        metadata: {
+          plan_name: planName,
+          created_by: 'lovable_app'
+        }
+      }
     };
 
     // Add trial period if specified

@@ -91,16 +91,17 @@ serve(async (req) => {
       let usdAmount = amount;
       if (price.currency === 'gbp') {
         usdAmount = Math.round(amount / 0.79); // Convert GBP to USD
+      } else if (price.currency === 'eur') {
+        usdAmount = Math.round(amount / 0.85); // Convert EUR to USD
       }
       
-      if (usdAmount <= 1000) {
-        subscriptionTier = "Basic";
-      } else if (usdAmount <= 2500) {
-        subscriptionTier = "Premium";
-      } else if (usdAmount <= 5000) {
-        subscriptionTier = "Premium+";
+      // Map to correct subscription tiers based on actual plan prices
+      if (usdAmount <= 1500) {
+        subscriptionTier = "Premium"; // $24.95 plan
+      } else if (usdAmount <= 5500) {
+        subscriptionTier = "Premium+"; // $49.95 plan
       } else {
-        subscriptionTier = "Enterprise";
+        subscriptionTier = "Enterprise"; // $99+ plans
       }
       logStep("Determined subscription tier", { priceId, amount, currency: price.currency, subscriptionTier });
     } else {

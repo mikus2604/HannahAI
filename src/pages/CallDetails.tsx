@@ -10,8 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Phone, MessageSquare, Clock, User, RefreshCw, BarChart3, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { CallAnalyticsChart } from "@/components/analytics/CallAnalyticsChart";
+import { Link } from "react-router-dom";
 
 interface Call {
   id: string;
@@ -79,10 +79,10 @@ const CallDetails = () => {
 
   const [chartData, setChartData] = useState<Array<{
     period: string;
-    calls: number;
-    completed: number;
-    partial: number;
-    notCompleted: number;
+    totalCalls: number;
+    completedCalls: number;
+    failedCalls: number;
+    duration: number;
   }>>([]);
 
   useEffect(() => {
@@ -218,10 +218,10 @@ const CallDetails = () => {
       
       data.push({
         period: dateFormatter(periodDate),
-        calls: baseCalls,
-        completed,
-        partial,
-        notCompleted
+        totalCalls: baseCalls,
+        completedCalls: completed,
+        failedCalls: partial + notCompleted,
+        duration: Math.floor(Math.random() * 300) + 60 // 1-6 minutes in seconds
       });
     }
     
@@ -316,25 +316,23 @@ const CallDetails = () => {
   const historyStats = getHistoryStats();
 
   return (
-    <div className="flex-1 space-y-6 p-6">
+    <div className="flex-1 space-y-4 md:space-y-6 p-4 md:p-6">
       {/* Header with Refresh Button */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Call Details</h1>
+          <h1 className="text-2xl md:text-3xl font-bold">Call Details</h1>
           <p className="text-muted-foreground">View and analyze call logs and analytics</p>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">
-            Last updated: {lastRefresh.toLocaleTimeString()}
-          </span>
-          <Button 
-            onClick={handleRefresh} 
-            disabled={refreshing}
-            variant="outline"
-            size="sm"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button onClick={fetchCalls} disabled={loading} className="w-full sm:w-auto">
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
+          </Button>
+          <Button variant="outline" asChild className="w-full sm:w-auto">
+            <Link to="/premium-features">
+              <Shield className="h-4 w-4 mr-2" />
+              Premium Features
+            </Link>
           </Button>
         </div>
       </div>
@@ -460,70 +458,13 @@ const CallDetails = () => {
             </Card>
           </div>
 
-          {/* Charts Section */}
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    Call Analytics
-                  </CardTitle>
-                  <CardDescription>Call volume and completion rates over time</CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <Select value={timePeriod} onValueChange={setTimePeriod}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hour">Hour</SelectItem>
-                      <SelectItem value="day">Day</SelectItem>
-                      <SelectItem value="week">Week</SelectItem>
-                      <SelectItem value="month">Month</SelectItem>
-                      <SelectItem value="quarter">Quarter</SelectItem>
-                      <SelectItem value="year">Year</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={chartFrequency} onValueChange={setChartFrequency}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hourly">Hourly</SelectItem>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="quarterly">Quarterly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer
-                config={{
-                  calls: { label: "Total Calls", color: "hsl(var(--chart-1))" },
-                  completed: { label: "Completed", color: "hsl(var(--chart-2))" },
-                  partial: { label: "Partial", color: "hsl(var(--chart-3))" },
-                  notCompleted: { label: "Not Completed", color: "hsl(var(--chart-4))" }
-                }}
-                className="h-80"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} onClick={handleBarClick}>
-                    <XAxis dataKey="period" />
-                    <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="calls" fill="var(--color-calls)" name="Total Calls" />
-                    <Bar dataKey="completed" fill="var(--color-completed)" name="Completed" />
-                    <Bar dataKey="partial" fill="var(--color-partial)" name="Partial" />
-                    <Bar dataKey="notCompleted" fill="var(--color-notCompleted)" name="Not Completed" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
+          {/* Enhanced Analytics Section */}
+          <CallAnalyticsChart
+            data={chartData}
+            timePeriod={timePeriod}
+            onTimePeriodChange={setTimePeriod}
+            isLoading={loading}
+          />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-6">

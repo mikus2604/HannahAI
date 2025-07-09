@@ -268,23 +268,23 @@ const SuperUserDashboard = () => {
   const { analytics, stripe, recentUsers, recentCalls, systemHealth } = data;
 
   return (
-    <div className="flex-1 space-y-6 p-6">
-      <div className="flex items-center justify-between">
+    <div className="flex-1 space-y-4 md:space-y-6 p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Shield className="h-8 w-8 text-red-600" />
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+            <Shield className="h-6 w-6 md:h-8 md:w-8 text-red-600" />
             Super User Dashboard
           </h1>
           <p className="text-muted-foreground">Backend management and analytics</p>
         </div>
-        <Button onClick={fetchAnalytics} disabled={loading}>
+        <Button onClick={fetchAnalytics} disabled={loading} className="w-full sm:w-auto">
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh Data
         </Button>
       </div>
 
       {/* Overview Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -352,7 +352,7 @@ const SuperUserDashboard = () => {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
             {/* Plan Distribution */}
             <Card>
               <CardHeader>
@@ -460,7 +460,7 @@ const SuperUserDashboard = () => {
 
         <TabsContent value="revenue" className="space-y-4">
           {stripe ? (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
               <Card>
                 <CardHeader>
                   <CardTitle>Revenue Metrics</CardTitle>
@@ -545,7 +545,7 @@ const SuperUserDashboard = () => {
         </TabsContent>
 
         <TabsContent value="system" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Call Status Distribution (24h)</CardTitle>

@@ -334,13 +334,13 @@ const PlanManagement = () => {
   const currentPlan = getCurrentPlan();
 
   return (
-    <div className="flex-1 space-y-6 p-6">
-      <div className="flex items-center justify-between">
+    <div className="flex-1 space-y-6 p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Plan Management</h1>
+          <h1 className="text-2xl md:text-3xl font-bold">Plan Management</h1>
           <p className="text-muted-foreground">Choose the perfect plan for your business needs</p>
         </div>
-        <Badge variant="outline" className="flex items-center gap-1">
+        <Badge variant="outline" className="flex items-center gap-1 self-start sm:self-center">
           <span className="text-xs">Prices in {userCurrency}</span>
         </Badge>
       </div>
@@ -366,9 +366,9 @@ const PlanManagement = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant={currentPlan === 'free' ? 'secondary' : 'default'}>
                     {plans.find(p => p.id === currentPlan)?.name || 'Free'}
                   </Badge>
@@ -380,7 +380,7 @@ const PlanManagement = () => {
                 </div>
                 {subscriptionInfo.subscription_end && (
                   <p className="text-sm text-muted-foreground">
-                    Renews on {formatDate(subscriptionInfo.subscription_end)}
+                    Automatically renews on {formatDate(subscriptionInfo.subscription_end)}
                   </p>
                 )}
               </div>
@@ -389,6 +389,7 @@ const PlanManagement = () => {
                   variant="outline" 
                   onClick={handleManageSubscription}
                   disabled={isLoading}
+                  className="w-full sm:w-auto"
                 >
                   Manage Subscription
                 </Button>
@@ -399,7 +400,7 @@ const PlanManagement = () => {
       )}
 
       {/* Plans Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {plans.map((plan) => {
           const isCurrentPlan = currentPlan === plan.id;
           const isPlanActive = subscriptionInfo.subscribed && isCurrentPlan;
@@ -447,14 +448,14 @@ const PlanManagement = () => {
               </CardHeader>
 
               <CardContent className="space-y-4">
-                <ul className="space-y-2">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm">
-                      <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
+                 <ul className="space-y-2">
+                   {plan.features.map((feature, index) => (
+                     <li key={index} className="flex items-start gap-2 text-xs sm:text-sm">
+                       <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                       <span>{feature}</span>
+                     </li>
+                   ))}
+                 </ul>
 
                 <Separator />
 
