@@ -49,7 +49,7 @@ serve(async (req) => {
       console.error('No user found for phone number:', to);
       const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="alice">This number is not configured. Please contact support.</Say>
+    <Say voice="Polly.Amy">This number is not configured. Please contact support.</Say>
     <Hangup/>
 </Response>`;
       return new Response(errorTwiml, {
@@ -112,6 +112,24 @@ serve(async (req) => {
       session = newSession;
     }
 
+    // Get user's greeting messages and system prompt
+    const { data: greetings } = await supabase
+      .from('greeting_messages')
+      .select('*')
+      .eq('user_id', phoneAssignment.user_id)
+      .eq('is_active', true)
+      .limit(1);
+
+    const { data: systemPrompts } = await supabase
+      .from('system_prompts')
+      .select('*')
+      .eq('user_id', phoneAssignment.user_id)
+      .eq('is_active', true)
+      .limit(1);
+
+    const activeGreeting = greetings?.[0];
+    const activeSystemPrompt = systemPrompts?.[0];
+
     // Process speech input with ChatGPT if provided
     let response = '';
     let nextState = session.current_state;
@@ -126,6 +144,20 @@ serve(async (req) => {
           message: speechResult
         });
 
+      // Create system prompt with user's custom instructions
+      const systemPrompt = activeSystemPrompt?.prompt || `You are a professional AI receptionist for this business. Current state: ${session.current_state}. 
+              Collected data: ${JSON.stringify(session.collected_data)}.
+              
+              Rules:
+              - Be concise and professional
+              - Ask for name, reason for calling, and callback number if needed
+              - Confirm information before ending
+              - Keep responses under 50 words
+              - If greeting state, welcome them and ask how you can help
+              - If collecting info, gather missing details
+              - If confirming, summarize and confirm details
+              - If ending, provide closure and next steps`;
+
       // Get ChatGPT response
       const chatGptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -138,18 +170,7 @@ serve(async (req) => {
           messages: [
             {
               role: 'system',
-              content: `You are Lucy, a professional AI receptionist. Current state: ${session.current_state}. 
-              Collected data: ${JSON.stringify(session.collected_data)}.
-              
-              Rules:
-              - Be concise and professional
-              - Ask for name, reason for calling, and callback number if needed
-              - Confirm information before ending
-              - Keep responses under 50 words
-              - If greeting state, welcome them and ask how you can help
-              - If collecting info, gather missing details
-              - If confirming, summarize and confirm details
-              - If ending, provide closure and next steps`
+              content: systemPrompt
             },
             {
               role: 'user',
@@ -194,8 +215,8 @@ serve(async (req) => {
         .eq('id', session.id);
 
     } else {
-      // Initial greeting
-      response = "Hello! Thank you for calling. I'm Lucy, your AI assistant. How may I help you today?";
+      // Use custom greeting or default
+      response = activeGreeting?.message || "Hello! Thank you for calling. How may I help you today?";
       
       await supabase
         .from('transcripts')
@@ -206,14 +227,14 @@ serve(async (req) => {
         });
     }
 
-    // Generate TwiML response
+    // Generate TwiML response with more human voice
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="alice">${response}</Say>
+    <Say voice="Polly.Amy">${response}</Say>
     <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="3" timeout="10">
-        <Say voice="alice">Please speak after the tone.</Say>
+        <Say voice="Polly.Amy">Please speak after the tone.</Say>
     </Gather>
-    <Say voice="alice">Thank you for calling. Goodbye!</Say>
+    <Say voice="Polly.Amy">Thank you for calling. Goodbye!</Say>
     <Hangup/>
 </Response>`;
 
@@ -229,7 +250,7 @@ serve(async (req) => {
     
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="alice">I'm sorry, I'm experiencing technical difficulties. Please try again later.</Say>
+    <Say voice="Polly.Amy">I'm sorry, I'm experiencing technical difficulties. Please try again later.</Say>
     <Hangup/>
 </Response>`;
 
