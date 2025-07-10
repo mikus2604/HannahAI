@@ -72,6 +72,8 @@ export const ApiKeySetupModal = ({ isOpen, onClose, apiType }: ApiKeySetupModalP
             user_id: user.id,
             key_name: field.key,
             key_value: field.value,
+          }, {
+            onConflict: 'user_id,key_name'
           });
           
           if (error) {
