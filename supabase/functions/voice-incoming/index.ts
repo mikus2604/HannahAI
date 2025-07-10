@@ -285,13 +285,16 @@ CRITICAL: When sharing contact details, use the EXACT values listed above. Never
       if (session.current_state === DIALOGUE_STATES.GREETING) {
         nextState = DIALOGUE_STATES.COLLECTING_INFO;
       } else if (session.current_state === DIALOGUE_STATES.COLLECTING_INFO) {
-        // Check for conversation ending cues
+        // Check for conversation ending cues - be more specific to avoid premature endings
         const lowerResponse = response.toLowerCase();
         const lowerSpeech = speechResult.toLowerCase();
         
-        if (lowerSpeech.includes('thank') || lowerSpeech.includes('bye') || 
-            lowerSpeech.includes('goodbye') || lowerSpeech.includes('done') ||
-            lowerResponse.includes('goodbye') || lowerResponse.includes('thank you')) {
+        // Only end conversation on very clear ending phrases
+        if ((lowerSpeech.includes('goodbye') || lowerSpeech.includes('bye bye') || 
+             lowerSpeech.includes('have a good day') || lowerSpeech.includes('thanks bye') ||
+             lowerSpeech.includes('that\'s all') || lowerSpeech.includes('all done')) &&
+            (lowerResponse.includes('goodbye') || lowerResponse.includes('have a') || 
+             lowerResponse.includes('take care'))) {
           nextState = DIALOGUE_STATES.ENDING;
         } else if (lowerSpeech.includes('confirm') || lowerSpeech.includes('yes') || 
                    lowerSpeech.includes('correct') || lowerSpeech.includes('right')) {
