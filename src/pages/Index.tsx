@@ -89,13 +89,21 @@ const Index = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'in-progress': return 'bg-blue-100 text-blue-800';
-      case 'sms_completed': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'completed': return 'default';
+      case 'in-progress': return 'secondary';
+      case 'sms_completed': return 'outline';
+      default: return 'outline';
     }
+  };
+
+  const formatDuration = (seconds?: number) => {
+    if (!seconds) return 'N/A';
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
   };
 
   const formatDate = (dateString: string) => {
@@ -166,7 +174,7 @@ const Index = () => {
                               {formatPhoneNumber(call.from_number)}
                             </span>
                           </div>
-                          <Badge className={getStatusColor(call.call_status)}>
+                          <Badge variant={getStatusVariant(call.call_status)}>
                             {call.call_status.replace('_', ' ')}
                           </Badge>
                         </div>
@@ -175,9 +183,7 @@ const Index = () => {
                             <Clock className="h-3 w-3" />
                             {formatDate(call.started_at)}
                           </div>
-                          {call.call_duration && (
-                            <span>{call.call_duration}s</span>
-                          )}
+                          <span>Duration: {formatDuration(call.call_duration)}</span>
                         </div>
                       </div>
                     ))}
