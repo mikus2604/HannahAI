@@ -10,7 +10,7 @@ import { Copy, ExternalLink } from "lucide-react";
 interface ApiKeySetupModalProps {
   isOpen: boolean;
   onClose: () => void;
-  apiType: 'openai' | 'twilio' | 'stripe' | 'resend' | null;
+  apiType: 'openai' | 'twilio' | 'stripe' | null;
 }
 
 export const ApiKeySetupModal = ({ isOpen, onClose, apiType }: ApiKeySetupModalProps) => {
@@ -44,14 +44,6 @@ export const ApiKeySetupModal = ({ isOpen, onClose, apiType }: ApiKeySetupModalP
       docsUrl: "https://dashboard.stripe.com/apikeys",
       fields: [
         { key: "STRIPE_SECRET_KEY", label: "Secret Key", value: apiKey, setter: setApiKey, placeholder: "sk_..." }
-      ]
-    },
-    resend: {
-      title: "Setup Resend API Key",
-      description: "Enter your Resend API key for email notifications",
-      docsUrl: "https://resend.com/api-keys",
-      fields: [
-        { key: "RESEND_API_KEY", label: "API Key", value: apiKey, setter: setApiKey, placeholder: "re_..." }
       ]
     }
   };

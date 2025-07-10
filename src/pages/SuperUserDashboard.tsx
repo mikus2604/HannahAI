@@ -94,7 +94,7 @@ const SuperUserDashboard = () => {
   const [hasAccess, setHasAccess] = useState(false);
   const [testingStates, setTestingStates] = useState<Record<string, boolean>>({});
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
-  const [showSetupModal, setShowSetupModal] = useState<'openai' | 'twilio' | 'stripe' | 'resend' | null>(null);
+  const [showSetupModal, setShowSetupModal] = useState<'openai' | 'twilio' | 'stripe' | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const testAPI = async (apiName: string, testFunction: () => Promise<any>) => {
@@ -735,14 +735,6 @@ const SuperUserDashboard = () => {
                       <TestTube className="h-4 w-4 mr-1" />
                       {testingStates['resend'] ? 'Testing...' : 'Test Email'}
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setShowSetupModal('resend')}
-                    >
-                      <Settings className="h-4 w-4 mr-1" />
-                      Setup API Key
-                    </Button>
                     <Button variant="outline" size="sm" asChild>
                       <a href="https://resend.com/emails" target="_blank" rel="noopener noreferrer">
                         <Settings className="h-4 w-4 mr-1" />
@@ -757,6 +749,14 @@ const SuperUserDashboard = () => {
                     </Button>
                   </div>
                   {getTestResult('resend')}
+                  
+                  {/* Setup API Key Section */}
+                  <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                    <h4 className="font-medium mb-2">Setup Resend API Key</h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Configure your Resend API key for email notifications. Get your API key from the link above.
+                    </p>
+                  </div>
                 </div>
               </div>
             </CardContent>
