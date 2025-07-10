@@ -236,37 +236,25 @@ const SpecificCallDetails = () => {
                 {call.recording_url ? 'Download' : 'Not Available'}
               </Button>
             </div>
+            {session?.collected_data && Object.keys(session.collected_data).length > 0 && (
+              <div className="md:col-span-2">
+                <p className="text-sm font-medium text-muted-foreground mb-2">Collected Data</p>
+                <div className="space-y-2">
+                  {Object.entries(session.collected_data).map(([key, value]) => (
+                    <div key={key} className="bg-muted/50 p-3 rounded-md">
+                      <p className="text-xs font-medium text-muted-foreground mb-1 capitalize">
+                        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                      </p>
+                      <p className="text-sm">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Call Session Data */}
-      {session && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Session Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-2">Current State</p>
-                <Badge variant="outline">{session.current_state}</Badge>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-2">Collected Data</p>
-                <div className="bg-muted p-3 rounded-md">
-                  <pre className="text-xs overflow-auto">
-                    {JSON.stringify(session.collected_data, null, 2)}
-                  </pre>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Call Transcript */}
       <Card>
