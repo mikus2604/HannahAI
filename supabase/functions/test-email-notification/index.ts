@@ -160,7 +160,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Hannah AI <notifications@resend.dev>',
+        from: 'Hannah AI <notifications@arielonline.services>',
         to: [targetEmail],
         subject: 'Test Email Notification - Hannah AI',
         html: testEmailHtml,
