@@ -31,7 +31,8 @@ import {
   Zap,
   TestTube,
   Settings,
-  Wrench
+  Wrench,
+  Mail
 } from "lucide-react";
 import GrantSuperUser from "@/components/GrantSuperUser";
 import { UserPlanManager } from "@/components/dashboard/UserPlanManager";
@@ -147,6 +148,12 @@ const SuperUserDashboard = () => {
 
   const testStripe = () => testAPI('stripe', async () => {
     const { data, error } = await supabase.functions.invoke('test-stripe');
+    if (error) throw error;
+    return data;
+  });
+
+  const testResend = () => testAPI('resend', async () => {
+    const { data, error } = await supabase.functions.invoke('test-email-notification');
     if (error) throw error;
     return data;
   });
@@ -704,6 +711,44 @@ const SuperUserDashboard = () => {
                     </Button>
                   </div>
                   {getTestResult('stripe')}
+                </div>
+
+                {/* Resend */}
+                <div className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <Mail className="h-6 w-6 mt-1" />
+                      <div>
+                        <h3 className="font-semibold">Resend</h3>
+                        <p className="text-sm text-muted-foreground">Email notifications and communication service</p>
+                      </div>
+                    </div>
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={testResend}
+                      disabled={testingStates['resend']}
+                    >
+                      <TestTube className="h-4 w-4 mr-1" />
+                      {testingStates['resend'] ? 'Testing...' : 'Test Email'}
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="https://resend.com/dashboard" target="_blank" rel="noopener noreferrer">
+                        <Settings className="h-4 w-4 mr-1" />
+                        Resend Dashboard
+                      </a>
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer">
+                        <Wrench className="h-4 w-4 mr-1" />
+                        API Keys
+                      </a>
+                    </Button>
+                  </div>
+                  {getTestResult('resend')}
                 </div>
               </div>
             </CardContent>
