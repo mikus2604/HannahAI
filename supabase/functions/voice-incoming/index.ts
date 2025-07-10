@@ -186,16 +186,16 @@ serve(async (req) => {
 
       // Create system prompt with user's custom instructions and assistant name
       const contactInfo = userProfile ? `
-Contact Information (you can share this if asked):
-- Phone: ${userProfile.contact_phone || 'Not provided'}
-- Email: ${userProfile.contact_email || 'Not provided'} 
-- Website: ${userProfile.website || 'Not provided'}
-- Address: ${userProfile.office_address || 'Not provided'}` : '';
+Contact Information (share these ACTUAL details when asked):
+- Phone: ${userProfile.contact_phone || 'Not available'}
+- Email: ${userProfile.contact_email || 'Not available'} 
+- Website: ${userProfile.website || 'Not available'}
+- Address: ${userProfile.office_address || 'Not available'}` : '';
 
       const serviceRules = `
 Available Services (only provide these if enabled):
 - ${assistantServices.takeContactInfo ? 'CAN' : 'CANNOT'} collect name and contact information for callbacks
-- ${assistantServices.provideContactDetails ? 'CAN' : 'CANNOT'} share business contact information  
+- ${assistantServices.provideContactDetails ? 'CAN' : 'CANNOT'} share business contact information from above
 - ${assistantServices.sayMessage ? 'CAN' : 'CANNOT'} deliver messages to callers
 - ${assistantServices.bookMeeting ? 'CAN' : 'CANNOT'} schedule meetings`;
 
@@ -205,27 +205,30 @@ Available Services (only provide these if enabled):
         // Custom system prompt with context injection
         systemPrompt = `${activeSystemPrompt.prompt}
 
-IMPORTANT CONTEXT:
+IMPORTANT CONTEXT - ALWAYS USE THESE ACTUAL VALUES:
 - You are ${assistantName}
 - Current conversation state: ${session.current_state}
 - Collected data so far: ${JSON.stringify(session.collected_data)}
 ${contactInfo}
 ${serviceRules}
 
-Remember what was already discussed - don't repeat questions.`;
+CRITICAL: When sharing contact details, use the EXACT values listed above. Never say "insert contact number here" or similar placeholders. Use the actual phone numbers, emails, and addresses provided.`;
       } else {
-        // Default system prompt
+        // Default system prompt with clear contact detail instructions
         systemPrompt = `You are ${assistantName}, a professional AI receptionist for this business. Current state: ${session.current_state}. 
               Collected data: ${JSON.stringify(session.collected_data)}.
               ${contactInfo}
               ${serviceRules}
               
-              Rules:
+              RULES:
               - Be natural, conversational and professional
               - ONLY provide services that are enabled above
               - Keep responses under 30 words
               - Remember what was discussed already - don't repeat questions
               - Build on the conversation naturally
+              - When sharing contact details, use the EXACT values provided above
+              - NEVER use placeholders like "insert contact number here"
+              - If contact info is "Not available", say "I don't have that information available"
               - If greeting state, welcome them and ask how you can help
               - If collecting info, gather missing details
               - If confirming, summarize and confirm details
