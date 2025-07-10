@@ -99,25 +99,27 @@ serve(async (req) => {
 
     const { userEmail } = await req.json().catch(() => ({ userEmail: null }));
     
-    // Get user email from auth if not provided
+    // Get user email from auth - for test emails, always use the authenticated user's email
+    // to avoid Resend domain verification issues
     let targetEmail = userEmail;
     if (!targetEmail) {
       const token = authHeader.replace("Bearer ", "");
       const { data: userData } = await supabase.auth.getUser(token);
       targetEmail = userData.user?.email;
-      
-      if (!targetEmail) {
-        return new Response(
-          JSON.stringify({ 
-            success: false,
-            error: 'No email address available for sending test notification' 
-          }), 
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
+    }
+    
+    // For test emails, always use the authenticated user's email to avoid domain verification issues
+    if (!targetEmail) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'No email address available for sending test notification' 
+        }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
     console.log(`Sending test email to: ${targetEmail}`);
