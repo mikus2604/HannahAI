@@ -181,7 +181,7 @@ serve(async (req) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: 'Hannah AI <notifications@arielonline.services>',
+            from: 'Hannah AI <notifications@arielonline.co.uk>',
             to: [user.notification_email || profile?.contact_email || 'user@example.com'],
             subject: `${digestType.charAt(0).toUpperCase() + digestType.slice(1)} Call Summary - ${calls.length} call${calls.length > 1 ? 's' : ''}`,
             html: emailHtml,
