@@ -9,9 +9,30 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const resendApiKey = Deno.env.get('RESEND_API_KEY');
 
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function getApiKey(userId: string, keyName: string): Promise<string | null> {
+  try {
+    // Try to get user's personal API key first
+    const { data: userApiKey, error: userKeyError } = await supabase
+      .from('api_keys')
+      .select('key_value')
+      .eq('user_id', userId)
+      .eq('key_name', keyName)
+      .maybeSingle();
+
+    if (userApiKey && !userKeyError) {
+      return userApiKey.key_value;
+    }
+
+    // Fall back to environment variable
+    return Deno.env.get(keyName);
+  } catch (error) {
+    console.error('Error getting API key:', error);
+    return Deno.env.get(keyName);
+  }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -19,17 +40,6 @@ serve(async (req) => {
   }
 
   try {
-    if (!resendApiKey) {
-      console.error('RESEND_API_KEY not configured');
-      return new Response(
-        JSON.stringify({ error: 'Email service not configured' }), 
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
     const { digestType } = await req.json(); // 'daily', 'weekly', 'monthly'
     
     console.log(`Processing ${digestType} digest emails...`);
@@ -76,6 +86,13 @@ serve(async (req) => {
 
     for (const user of users) {
       try {
+        // Get user's Resend API key
+        const resendApiKey = await getApiKey(user.user_id, 'RESEND_API_KEY');
+        if (!resendApiKey) {
+          console.log(`No Resend API key configured for user ${user.user_id}, skipping`);
+          continue;
+        }
+
         // Get user profile for fallback email
         const { data: profile } = await supabase
           .from('profiles')

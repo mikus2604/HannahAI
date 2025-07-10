@@ -9,9 +9,30 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const resendApiKey = Deno.env.get('RESEND_API_KEY');
 
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function getApiKey(userId: string, keyName: string): Promise<string | null> {
+  try {
+    // Try to get user's personal API key first
+    const { data: userApiKey, error: userKeyError } = await supabase
+      .from('api_keys')
+      .select('key_value')
+      .eq('user_id', userId)
+      .eq('key_name', keyName)
+      .maybeSingle();
+
+    if (userApiKey && !userKeyError) {
+      return userApiKey.key_value;
+    }
+
+    // Fall back to environment variable
+    return Deno.env.get(keyName);
+  } catch (error) {
+    console.error('Error getting API key:', error);
+    return Deno.env.get(keyName);
+  }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -19,8 +40,64 @@ serve(async (req) => {
   }
 
   try {
+    const { callId, userId } = await req.json();
+    
+    console.log('Sending notification for call:', callId, 'to user:', userId);
+
+    // Get user preferences for email notifications
+    const { data: userPrefs, error: prefsError } = await supabase
+      .from('user_preferences')
+      .select('notification_email, email_notifications, notification_frequency')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (prefsError) {
+      console.error('Error fetching user preferences:', prefsError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to get user preferences' }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Check if email notifications are enabled
+    if (!userPrefs?.email_notifications) {
+      console.log('Email notifications disabled for user:', userId);
+      return new Response(
+        JSON.stringify({ success: true, message: 'Email notifications disabled' }), 
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Get notification email (prefer custom email, fallback to user's auth email)
+    let notificationEmail = userPrefs.notification_email;
+    if (!notificationEmail) {
+      // Get user's primary email from auth
+      const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
+      if (userError || !userData.user?.email) {
+        console.error('No email address found for user:', userId);
+        return new Response(
+          JSON.stringify({ error: 'No email address configured' }), 
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+      notificationEmail = userData.user.email;
+    }
+
+    const notificationFrequency = userPrefs.notification_frequency || 'immediate';
+    console.log(`Notification settings - Email: ${notificationEmail}, Frequency: ${notificationFrequency}`);
+
+    // Get user's Resend API key
+    const resendApiKey = await getApiKey(userId, 'RESEND_API_KEY');
     if (!resendApiKey) {
-      console.error('RESEND_API_KEY not configured');
+      console.error('RESEND_API_KEY not configured for user:', userId);
       return new Response(
         JSON.stringify({ error: 'Email service not configured' }), 
         { 
@@ -29,10 +106,6 @@ serve(async (req) => {
         }
       );
     }
-
-    const { callId, userId, userEmail, notificationType = 'immediate' } = await req.json();
-    
-    console.log('Sending notification for call:', callId, 'to user:', userId);
 
     // Get call details with transcript
     const { data: call, error: callError } = await supabase
@@ -55,9 +128,9 @@ serve(async (req) => {
       );
     }
 
-    // Use the provided user email
-    if (!userEmail) {
-      throw new Error('User email is required');
+    // Use the notification email from user preferences
+    if (!notificationEmail) {
+      throw new Error('No notification email configured');
     }
 
     // Format call duration
@@ -125,7 +198,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from: 'Hannah AI <notifications@resend.dev>',
-        to: [userEmail],
+        to: [notificationEmail],
         subject: `New Call from ${call.from_number}`,
         html: emailHtml,
       }),
@@ -138,14 +211,14 @@ serve(async (req) => {
     }
 
     const emailResult = await emailResponse.json();
-    console.log('Email sent successfully:', emailResult);
+    console.log(`Email sent successfully to ${notificationEmail}:`, emailResult);
 
     // Log the notification
     await supabase
       .from('email_notifications')
       .insert({
         user_id: userId,
-        notification_type: notificationType,
+        notification_type: notificationFrequency,
         call_ids: [callId],
         email_subject: `New Call from ${call.from_number}`,
         email_content: emailHtml,
