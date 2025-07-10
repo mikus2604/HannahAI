@@ -15,16 +15,23 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 async function getApiKey(authHeader: string, keyName: string): Promise<string | null> {
   console.log(`[getApiKey] Starting API key lookup for: ${keyName}`);
   
-  const supabaseClient = createClient(
+  // First try to get user from anon client
+  const supabaseAnonClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+  );
+
+  // Use service client for database operations to bypass RLS
+  const supabaseServiceClient = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
   );
 
   try {
     const token = authHeader.replace("Bearer ", "");
     console.log(`[getApiKey] Attempting to authenticate user with token length: ${token.length}`);
     
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    const { data: userData, error: userError } = await supabaseAnonClient.auth.getUser(token);
     if (userError || !userData.user) {
       console.log(`[getApiKey] User authentication failed:`, userError);
       const envKey = Deno.env.get(keyName);
@@ -34,7 +41,8 @@ async function getApiKey(authHeader: string, keyName: string): Promise<string | 
 
     console.log(`[getApiKey] User authenticated successfully: ${userData.user.id}`);
 
-    const { data: userApiKey, error: userKeyError } = await supabaseClient
+    // Use service client to query API keys (bypasses RLS)
+    const { data: userApiKey, error: userKeyError } = await supabaseServiceClient
       .from('api_keys')
       .select('key_value')
       .eq('user_id', userData.user.id)
