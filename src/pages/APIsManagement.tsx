@@ -476,9 +476,9 @@ const APIsManagement = () => {
                   <AlertDescription>
                     To configure Resend for email notifications:
                     <ol className="list-decimal list-inside mt-2 space-y-1">
-                      <li>Create an account at <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">resend.com</a></li>
-                      <li>Verify your sending domain at <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="text-primary underline">resend.com/domains</a></li>
-                      <li>Generate an API key at <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">resend.com/api-keys</a></li>
+                       <li>Create an account at <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-1">resend.com <ExternalLink className="h-3 w-3" /></a></li>
+                       <li>Verify your sending domain at <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-1">resend.com/domains <ExternalLink className="h-3 w-3" /></a></li>
+                       <li>Generate an API key at <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-1">resend.com/api-keys <ExternalLink className="h-3 w-3" /></a></li>
                       <li>Add the RESEND_API_KEY to your Supabase secrets</li>
                     </ol>
                   </AlertDescription>

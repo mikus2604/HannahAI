@@ -128,7 +128,7 @@ const SpecificCallDetails = () => {
 
   const handleDownloadRecording = () => {
     if (call?.recording_url) {
-      window.open(call.recording_url, '_blank');
+      window.open(call.recording_url, '_blank', 'noopener,noreferrer');
     } else {
       toast({
         title: "No Recording",

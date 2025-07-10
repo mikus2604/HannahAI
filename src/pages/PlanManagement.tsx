@@ -190,7 +190,7 @@ const PlanManagement = () => {
 
     if (plan.id === 'enterprise') {
       // Handle enterprise contact
-      window.open('mailto:sales@voiceassistant.com?subject=Enterprise Plan Inquiry', '_blank');
+      window.open('mailto:sales@voiceassistant.com?subject=Enterprise Plan Inquiry', '_blank', 'noopener,noreferrer');
       return;
     }
 
@@ -221,7 +221,7 @@ const PlanManagement = () => {
 
       if (data?.url) {
         // Open Stripe checkout in new tab
-        window.open(data.url, '_blank');
+        window.open(data.url, '_blank', 'noopener,noreferrer');
       }
     } catch (error) {
       toast({
@@ -249,7 +249,7 @@ const PlanManagement = () => {
       }
 
       if (data?.url) {
-        window.open(data.url, '_blank');
+        window.open(data.url, '_blank', 'noopener,noreferrer');
       }
     } catch (error) {
       toast({

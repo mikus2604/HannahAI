@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Copy, ExternalLink } from "lucide-react";
+import { Copy, ExternalLink, Settings } from "lucide-react";
 
 interface ApiKeySetupModalProps {
   isOpen: boolean;
@@ -99,14 +99,18 @@ export const ApiKeySetupModal = ({ isOpen, onClose, apiType }: ApiKeySetupModalP
     }
   };
 
-  const handleOpenDocs = () => {
+  const handleOpenDocs = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (currentConfig) {
-      window.open(currentConfig.docsUrl, '_blank');
+      window.open(currentConfig.docsUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
-  const handleOpenSupabase = () => {
-    window.open('https://supabase.com/dashboard/project/6250130c-ddd3-4b20-9034-aa32fa6ee0be/settings/functions', '_blank');
+  const handleOpenSupabase = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.open('https://supabase.com/dashboard/project/6250130c-ddd3-4b20-9034-aa32fa6ee0be/settings/functions', '_blank', 'noopener,noreferrer');
   };
 
   const resetForm = () => {

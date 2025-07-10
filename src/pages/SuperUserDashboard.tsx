@@ -32,7 +32,8 @@ import {
   TestTube,
   Settings,
   Wrench,
-  Mail
+  Mail,
+  ExternalLink
 } from "lucide-react";
 import GrantSuperUser from "@/components/GrantSuperUser";
 import { UserPlanManager } from "@/components/dashboard/UserPlanManager";
@@ -628,6 +629,7 @@ const SuperUserDashboard = () => {
                     </Button>
                     <Button variant="outline" size="sm" asChild>
                       <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-1" />
                         View API Keys
                       </a>
                     </Button>
@@ -667,6 +669,7 @@ const SuperUserDashboard = () => {
                     </Button>
                     <Button variant="outline" size="sm" asChild>
                       <a href="https://console.twilio.com/project/api-keys" target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-1" />
                         Twilio Console
                       </a>
                     </Button>
@@ -706,6 +709,7 @@ const SuperUserDashboard = () => {
                     </Button>
                     <Button variant="outline" size="sm" asChild>
                       <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-1" />
                         Stripe Dashboard
                       </a>
                     </Button>
@@ -745,13 +749,13 @@ const SuperUserDashboard = () => {
                     </Button>
                     <Button variant="outline" size="sm" asChild>
                       <a href="https://resend.com/emails" target="_blank" rel="noopener noreferrer">
-                        <Settings className="h-4 w-4 mr-1" />
+                        <ExternalLink className="h-4 w-4 mr-1" />
                         Resend Dashboard
                       </a>
                     </Button>
                     <Button variant="outline" size="sm" asChild>
                       <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer">
-                        <Wrench className="h-4 w-4 mr-1" />
+                        <ExternalLink className="h-4 w-4 mr-1" />
                         API Keys
                       </a>
                     </Button>

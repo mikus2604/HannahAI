@@ -20,7 +20,8 @@ import {
   Zap,
   Crown,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  ExternalLink
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -310,8 +311,13 @@ const PremiumFeatures = () => {
           <div className="mt-4">
             <Button 
               variant="outline" 
-              onClick={() => window.open('https://supabase.com/dashboard/project/idupowkqzcwrjslcixsp/functions', '_blank')}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.open('https://supabase.com/dashboard/project/idupowkqzcwrjslcixsp/functions', '_blank', 'noopener,noreferrer');
+              }}
             >
+              <ExternalLink className="h-4 w-4 mr-2" />
               <Settings className="h-4 w-4 mr-2" />
               View Edge Functions Dashboard
             </Button>
