@@ -244,9 +244,9 @@ CRITICAL: When sharing contact details, use the EXACT values listed above. Never
         }
       ];
 
-      // Add conversation history
+      // Add conversation history (limit to last 6 for speed)
       if (transcripts && transcripts.length > 0) {
-        transcripts.slice(-10).forEach(transcript => { // Only last 10 exchanges
+        transcripts.slice(-6).forEach(transcript => { // Reduced from 10 to 6
           conversationMessages.push({
             role: transcript.speaker === 'caller' ? 'user' : 'assistant',
             content: transcript.message
@@ -268,12 +268,13 @@ CRITICAL: When sharing contact details, use the EXACT values listed above. Never
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-4o-mini', // Fast model optimized for speed
           messages: conversationMessages,
-          max_tokens: 150,
-          temperature: 0.7,
-          presence_penalty: 0.2,
-          frequency_penalty: 0.3
+          max_tokens: 100, // Reduced for faster responses
+          temperature: 0.3, // Lower for more consistent, faster responses
+          presence_penalty: 0.1,
+          frequency_penalty: 0.1,
+          top_p: 0.9 // Focus on most likely responses for speed
         }),
       });
 
@@ -348,7 +349,7 @@ CRITICAL: When sharing contact details, use the EXACT values listed above. Never
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Polly.Joanna" prosodyRate="medium">${response}</Say>
-    <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="1" timeout="4">
+    <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="0.5" timeout="3" partialResultCallback="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" partialResultCallbackMethod="POST">
     </Gather>
     <Say voice="Polly.Joanna" prosodyRate="medium">I didn't hear anything. Thank you for calling. Goodbye!</Say>
     <Hangup/>
