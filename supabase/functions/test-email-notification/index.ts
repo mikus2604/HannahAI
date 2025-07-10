@@ -13,6 +13,8 @@ const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function getApiKey(authHeader: string, keyName: string): Promise<string | null> {
+  console.log(`[getApiKey] Starting API key lookup for: ${keyName}`);
+  
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_ANON_KEY") ?? ""
@@ -20,10 +22,17 @@ async function getApiKey(authHeader: string, keyName: string): Promise<string | 
 
   try {
     const token = authHeader.replace("Bearer ", "");
+    console.log(`[getApiKey] Attempting to authenticate user with token length: ${token.length}`);
+    
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError || !userData.user) {
-      return Deno.env.get(keyName);
+      console.log(`[getApiKey] User authentication failed:`, userError);
+      const envKey = Deno.env.get(keyName);
+      console.log(`[getApiKey] Falling back to env variable, found: ${envKey ? 'YES' : 'NO'}`);
+      return envKey;
     }
+
+    console.log(`[getApiKey] User authenticated successfully: ${userData.user.id}`);
 
     const { data: userApiKey, error: userKeyError } = await supabaseClient
       .from('api_keys')
@@ -32,14 +41,25 @@ async function getApiKey(authHeader: string, keyName: string): Promise<string | 
       .eq('key_name', keyName)
       .maybeSingle();
 
+    console.log(`[getApiKey] Database query result:`, { 
+      data: userApiKey ? 'FOUND' : 'NOT_FOUND', 
+      error: userKeyError,
+      keyExists: !!userApiKey?.key_value
+    });
+
     if (userApiKey && !userKeyError) {
+      console.log(`[getApiKey] Retrieved user API key successfully`);
       return userApiKey.key_value;
     }
 
-    return Deno.env.get(keyName);
+    const envKey = Deno.env.get(keyName);
+    console.log(`[getApiKey] No user key found, falling back to env variable: ${envKey ? 'FOUND' : 'NOT_FOUND'}`);
+    return envKey;
   } catch (error) {
-    console.error('Error getting API key:', error);
-    return Deno.env.get(keyName);
+    console.error('[getApiKey] Error getting API key:', error);
+    const envKey = Deno.env.get(keyName);
+    console.log(`[getApiKey] Exception fallback to env variable: ${envKey ? 'FOUND' : 'NOT_FOUND'}`);
+    return envKey;
   }
 }
 
@@ -50,10 +70,13 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization") || "";
+    console.log(`[main] Auth header length: ${authHeader.length}`);
+    
     const resendApiKey = await getApiKey(authHeader, 'RESEND_API_KEY');
+    console.log(`[main] Retrieved API key: ${resendApiKey ? 'FOUND' : 'NOT_FOUND'}`);
 
     if (!resendApiKey) {
-      console.error('RESEND_API_KEY not configured');
+      console.error('[main] RESEND_API_KEY not configured');
       return new Response(
         JSON.stringify({ 
           success: false,
