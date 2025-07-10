@@ -58,7 +58,7 @@ serve(async (req) => {
       });
     }
 
-    // Handle call status updates (when call ends) with better reliability
+    // Handle call status updates (when call ends) - RELIABLE STATUS UPDATES
     if (callStatus === 'completed' || callStatus === 'busy' || callStatus === 'failed' || callStatus === 'no-answer') {
       const { data: existingCall } = await supabase
         .from('calls')
@@ -67,24 +67,17 @@ serve(async (req) => {
         .single();
 
       if (existingCall) {
-        // Determine final status with more reliable logic
-        let finalStatus = 'failed'; // Default for premature hangups
+        // Map Twilio status directly to final status - no content-based guessing
+        let finalStatus = 'failed';
         
         if (callStatus === 'completed') {
-          // Check if any meaningful conversation happened
-          const { data: transcripts } = await supabase
-            .from('transcripts')
-            .select('speaker, message')
-            .eq('call_id', existingCall.id);
-            
-          const hasUserInput = transcripts?.some(t => t.speaker === 'caller' && t.message.trim().length > 0);
-          const hasAgentResponse = transcripts?.some(t => t.speaker === 'agent');
-          
-          if (hasUserInput && hasAgentResponse) {
-            finalStatus = 'completed'; // Meaningful conversation occurred
-          } else if (hasAgentResponse) {
-            finalStatus = 'partial_completed'; // At least greeting was delivered
-          }
+          finalStatus = 'completed'; // Call completed successfully
+        } else if (callStatus === 'busy') {
+          finalStatus = 'failed';
+        } else if (callStatus === 'no-answer') {
+          finalStatus = 'failed';
+        } else if (callStatus === 'failed') {
+          finalStatus = 'failed';
         }
 
         await supabase
@@ -95,8 +88,8 @@ serve(async (req) => {
           })
           .eq('twilio_call_sid', callSid);
 
-        // Trigger email notification in background for any completed call
-        if (finalStatus === 'completed' || finalStatus === 'partial_completed') {
+        // Trigger email notification in background for completed calls
+        if (finalStatus === 'completed') {
           const backgroundEmailTask = async () => {
             try {
               const { data: { user: authUser }, error: authError } = await supabase.auth.admin.getUserById(existingCall.user_id);
@@ -271,7 +264,23 @@ Available Services (only provide these if enabled):
 - ${assistantServices.sayMessage ? 'CAN' : 'CANNOT'} deliver messages to callers
 - ${assistantServices.bookMeeting ? 'CAN' : 'CANNOT'} schedule meetings`;
 
-      const systemPrompt = activeSystemPrompt?.prompt || `You are ${assistantName}, a professional AI receptionist for this business. Current state: ${session.current_state}. 
+      // Use active system prompt if available, otherwise default behavior
+      let systemPrompt;
+      if (activeSystemPrompt?.prompt) {
+        // Custom system prompt with context injection
+        systemPrompt = `${activeSystemPrompt.prompt}
+
+IMPORTANT CONTEXT:
+- You are ${assistantName}
+- Current conversation state: ${session.current_state}
+- Collected data so far: ${JSON.stringify(session.collected_data)}
+${contactInfo}
+${serviceRules}
+
+Remember what was already discussed - don't repeat questions.`;
+      } else {
+        // Default system prompt
+        systemPrompt = `You are ${assistantName}, a professional AI receptionist for this business. Current state: ${session.current_state}. 
               Collected data: ${JSON.stringify(session.collected_data)}.
               ${contactInfo}
               ${serviceRules}
@@ -287,6 +296,7 @@ Available Services (only provide these if enabled):
               - If confirming, summarize and confirm details
               - If ending, provide closure and next steps
               - Speak naturally without robotic phrases`;
+      }
 
       // Build conversation history for ChatGPT context
       const conversationMessages = [
@@ -332,66 +342,24 @@ Available Services (only provide these if enabled):
       const chatData = await chatGptResponse.json();
       response = chatData.choices[0].message.content;
 
-      // More reliable state and status management
-      let callStatus = call.call_status;
-      const lowerResponse = response.toLowerCase();
-      const lowerSpeech = speechResult.toLowerCase();
-      
-      // Enhanced state transitions with fallbacks
+      // Simpler state management - let Twilio handle call completion 
       if (session.current_state === DIALOGUE_STATES.GREETING) {
         nextState = DIALOGUE_STATES.COLLECTING_INFO;
-        // Keep as in-progress but mark that conversation started
-        callStatus = 'in-progress';
       } else if (session.current_state === DIALOGUE_STATES.COLLECTING_INFO) {
-        // More flexible completion detection
+        // Check for conversation ending cues
+        const lowerResponse = response.toLowerCase();
+        const lowerSpeech = speechResult.toLowerCase();
+        
         if (lowerSpeech.includes('thank') || lowerSpeech.includes('bye') || 
             lowerSpeech.includes('goodbye') || lowerSpeech.includes('done') ||
             lowerResponse.includes('goodbye') || lowerResponse.includes('thank you')) {
           nextState = DIALOGUE_STATES.ENDING;
-          callStatus = 'completed';
         } else if (lowerSpeech.includes('confirm') || lowerSpeech.includes('yes') || 
                    lowerSpeech.includes('correct') || lowerSpeech.includes('right')) {
           nextState = DIALOGUE_STATES.CONFIRMING;
-          callStatus = 'partial_completed';
         }
       } else if (session.current_state === DIALOGUE_STATES.CONFIRMING) {
         nextState = DIALOGUE_STATES.ENDING;
-        callStatus = 'completed';
-      }
-      
-      // Update call status with timestamps
-      const updateData: any = { call_status: callStatus };
-      if (callStatus === 'completed' || callStatus === 'partial_completed') {
-        updateData.ended_at = new Date().toISOString();
-      }
-      
-      await supabase
-        .from('calls')
-        .update(updateData)
-        .eq('id', call.id);
-        
-      // Trigger email notification in background for meaningful conversations
-      if (callStatus === 'completed' || callStatus === 'partial_completed') {
-        const backgroundEmailTask = async () => {
-          try {
-            const { data: { user: authUser }, error: authError } = await supabase.auth.admin.getUserById(phoneAssignment.user_id);
-            
-            if (!authError && authUser?.email) {
-              await supabase.functions.invoke('send-call-notification', {
-                body: { 
-                  callId: call.id, 
-                  userId: phoneAssignment.user_id,
-                  userEmail: authUser.email
-                }
-              });
-            }
-          } catch (error) {
-            console.error('Background email notification failed:', error);
-          }
-        };
-        
-        // Use background task to avoid blocking conversation flow
-        EdgeRuntime.waitUntil(backgroundEmailTask());
       }
 
       // Save AI response to transcripts
@@ -420,40 +388,13 @@ Available Services (only provide these if enabled):
         .from('transcripts')
         .insert({
           call_id: call.id,
-          speaker: 'agent',
+          speaker: 'agent', 
           message: response
         });
     }
 
-    // Handle call ending scenarios with timeout fallback
-    if (call.call_status === 'completed' || call.call_status === 'partial_completed' || 
-        nextState === DIALOGUE_STATES.ENDING) {
-      
-      // Add fallback timeout mechanism for hanging calls
-      const backgroundTimeoutTask = async () => {
-        // Wait 30 seconds then check if call is still in-progress
-        await new Promise(resolve => setTimeout(resolve, 30000));
-        
-        const { data: callCheck } = await supabase
-          .from('calls')
-          .select('call_status')
-          .eq('id', call.id)
-          .single();
-          
-        if (callCheck?.call_status === 'in-progress') {
-          // Force completion after timeout
-          await supabase
-            .from('calls')
-            .update({ 
-              call_status: 'partial_completed',
-              ended_at: new Date().toISOString()
-            })
-            .eq('id', call.id);
-        }
-      };
-      
-      EdgeRuntime.waitUntil(backgroundTimeoutTask());
-      
+    // Handle call ending scenarios 
+    if (nextState === DIALOGUE_STATES.ENDING) {
       // End the call properly
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
