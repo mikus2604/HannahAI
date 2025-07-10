@@ -742,10 +742,10 @@ const SuperUserDashboard = () => {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => window.location.href = '/apis-management'}
+                      onClick={() => setShowSetupModal('resend')}
                     >
                       <Settings className="h-4 w-4 mr-1" />
-                      Go to APIs Management
+                      Setup API Key
                     </Button>
                     <Button variant="outline" size="sm" asChild>
                       <a href="https://resend.com/emails" target="_blank" rel="noopener noreferrer">
