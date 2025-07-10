@@ -735,6 +735,20 @@ const SuperUserDashboard = () => {
                       <TestTube className="h-4 w-4 mr-1" />
                       {testingStates['resend'] ? 'Testing...' : 'Test Email'}
                     </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        // This will be handled by the lov-secret-form action
+                        toast({
+                          title: "Setup Required",
+                          description: "Please use the Setup API Key form below to configure your Resend API key.",
+                        });
+                      }}
+                    >
+                      <Settings className="h-4 w-4 mr-1" />
+                      Setup API Key
+                    </Button>
                     <Button variant="outline" size="sm" asChild>
                       <a href="https://resend.com/emails" target="_blank" rel="noopener noreferrer">
                         <Settings className="h-4 w-4 mr-1" />
