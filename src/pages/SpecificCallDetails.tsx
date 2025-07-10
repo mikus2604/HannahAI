@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, MessageSquare, Clock, Download, ArrowLeft, User } from "lucide-react";
+import { Phone, MessageSquare, Clock, Download, ArrowLeft, User, RefreshCw } from "lucide-react";
+import BackfillCollectedData from "@/components/BackfillCollectedData";
 import { useToast } from "@/hooks/use-toast";
 
 interface Call {
@@ -239,7 +240,10 @@ const SpecificCallDetails = () => {
             {/* Collected Data Section - Always show if session exists */}
             {session && (
               <div className="md:col-span-2 lg:col-span-4">
-                <p className="text-sm font-medium text-muted-foreground mb-2">Collected Data</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-muted-foreground">Collected Data</p>
+                  <BackfillCollectedData callId={call.id} onDataUpdated={fetchCallDetails} />
+                </div>
                 {session.collected_data && Object.keys(session.collected_data).length > 0 ? (
                   <div className="space-y-2">
                     {Object.entries(session.collected_data).map(([key, value]) => (
@@ -253,7 +257,7 @@ const SpecificCallDetails = () => {
                   </div>
                 ) : (
                   <div className="bg-muted/30 p-3 rounded-md">
-                    <p className="text-sm text-muted-foreground">No data collected during this call</p>
+                    <p className="text-sm text-muted-foreground">No data collected during this call - click "Extract Collected Data" to analyze the conversation</p>
                   </div>
                 )}
               </div>

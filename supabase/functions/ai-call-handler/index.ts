@@ -32,6 +32,16 @@ serve(async (req) => {
     // Create Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Get current call session to retrieve existing context and collected data
+    const { data: existingSession } = await supabase
+      .from('call_sessions')
+      .select('*')
+      .eq('call_id', callId)
+      .single();
+
+    const existingCollectedData = existingSession?.collected_data || {};
+    const conversationHistory = existingSession?.context?.conversation_history || [];
+
     // Get user's greeting messages and preferences
     const { data: greetings } = await supabase
       .from('greeting_messages')
@@ -42,18 +52,90 @@ serve(async (req) => {
 
     const activeGreeting = greetings?.[0];
 
+    // Get user profile for business context
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    // Extract contact information and messages from the user query
+    const extractionPrompt = `Extract structured information from this caller message: "${userQuery}"
+
+    Look for and extract:
+    - Caller name
+    - Phone numbers (format them properly)
+    - Email addresses 
+    - Messages for specific people
+    - Appointment requests
+    - Contact information
+    - Any important details to pass along
+
+    Current collected data: ${JSON.stringify(existingCollectedData)}
+
+    Return ONLY a JSON object with extracted information. If no new information is found, return empty object {}.
+    Example format:
+    {
+      "caller_name": "John Smith",
+      "phone_number": "+1 (555) 123-4567", 
+      "email": "john@example.com",
+      "message_for": "Aaron",
+      "message": "Please call me back as soon as possible",
+      "appointment_request": "Next Tuesday at 2pm"
+    }`;
+
+    // Get data extraction from OpenAI
+    const extractionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: extractionPrompt },
+          { role: 'user', content: userQuery }
+        ],
+        max_tokens: 300,
+        temperature: 0.1,
+      }),
+    });
+
+    let extractedData = {};
+    if (extractionResponse.ok) {
+      const extractionResult = await extractionResponse.json();
+      try {
+        extractedData = JSON.parse(extractionResult.choices[0].message.content.trim());
+      } catch (e) {
+        console.warn('Could not parse extracted data:', e);
+      }
+    }
+
+    // Merge with existing collected data
+    const updatedCollectedData = { ...existingCollectedData, ...extractedData };
+
     // Generate AI response based on context
-    const systemPrompt = `You are an AI receptionist for a business. 
+    const systemPrompt = `You are ${profile?.assistant_name || 'an AI receptionist'} for ${profile?.display_name || 'this business'}.
     ${activeGreeting ? `Business greeting: "${activeGreeting.message}"` : 'Use a professional business greeting.'}
+    
+    Business contact info:
+    ${profile?.contact_phone ? `Phone: ${profile.contact_phone}` : ''}
+    ${profile?.contact_email ? `Email: ${profile.contact_email}` : ''}
+    ${profile?.office_address ? `Address: ${profile.office_address}` : ''}
+    ${profile?.website ? `Website: ${profile.website}` : ''}
     
     Instructions:
     - Respond in ${language === 'en' ? 'English' : `the language code: ${language}`}
     - Be helpful, professional, and concise
-    - If asked about appointments, suggest calling back or scheduling online
-    - For urgent matters, offer to take a message
+    - Always ask for caller's name and contact information if taking a message
+    - If someone asks you to pass along a message, collect their name, phone number, and the complete message
+    - For appointments, either schedule them or take detailed contact information
     - Keep responses under 100 words
     - Speak naturally as if on a phone call
+    - If you've collected contact information, acknowledge it by name
     
+    Current collected data: ${JSON.stringify(updatedCollectedData)}
     Caller query: "${userQuery}"`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -80,22 +162,32 @@ serve(async (req) => {
     const aiData = await response.json();
     const aiResponse = aiData.choices[0].message.content;
 
-    // Store the AI interaction
+    // Update conversation history
+    const newConversationEntry = {
+      timestamp: new Date().toISOString(),
+      caller_query: userQuery,
+      ai_response: aiResponse
+    };
+    
+    const updatedConversationHistory = [...conversationHistory, newConversationEntry];
+
+    // Store the AI interaction with collected data
     await supabase
       .from('call_sessions')
       .upsert({
         call_id: callId,
         current_state: 'ai_handled',
+        collected_data: updatedCollectedData,
         context: {
           caller_id: callerId,
           language: language,
-          user_query: userQuery,
-          ai_response: aiResponse,
-          timestamp: new Date().toISOString()
+          conversation_history: updatedConversationHistory,
+          last_interaction: new Date().toISOString()
         }
       }, { onConflict: 'call_id' });
 
     console.log('AI Response generated:', aiResponse);
+    console.log('Collected data updated:', updatedCollectedData);
 
     return new Response(
       JSON.stringify({ 
