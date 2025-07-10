@@ -101,14 +101,14 @@ const SpecificCallDetails = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'in-progress': return 'bg-blue-100 text-blue-800';
-      case 'sms_completed': return 'bg-purple-100 text-purple-800';
-      case 'failed': return 'bg-red-100 text-red-800';
-      case 'cancelled': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'completed': return 'default';
+      case 'in-progress': return 'secondary';
+      case 'sms_completed': return 'outline';
+      case 'failed': return 'destructive';
+      case 'cancelled': return 'outline';
+      default: return 'outline';
     }
   };
 
@@ -202,7 +202,7 @@ const SpecificCallDetails = () => {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Status</p>
-              <Badge className={getStatusColor(call.call_status)}>
+              <Badge variant={getStatusVariant(call.call_status)}>
                 {call.call_status.replace('_', ' ')}
               </Badge>
             </div>
@@ -236,19 +236,26 @@ const SpecificCallDetails = () => {
                 {call.recording_url ? 'Download' : 'Not Available'}
               </Button>
             </div>
-            {session?.collected_data && Object.keys(session.collected_data).length > 0 && (
-              <div className="md:col-span-2">
+            {/* Collected Data Section - Always show if session exists */}
+            {session && (
+              <div className="md:col-span-2 lg:col-span-4">
                 <p className="text-sm font-medium text-muted-foreground mb-2">Collected Data</p>
-                <div className="space-y-2">
-                  {Object.entries(session.collected_data).map(([key, value]) => (
-                    <div key={key} className="bg-muted/50 p-3 rounded-md">
-                      <p className="text-xs font-medium text-muted-foreground mb-1 capitalize">
-                        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                      </p>
-                      <p className="text-sm">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</p>
-                    </div>
-                  ))}
-                </div>
+                {session.collected_data && Object.keys(session.collected_data).length > 0 ? (
+                  <div className="space-y-2">
+                    {Object.entries(session.collected_data).map(([key, value]) => (
+                      <div key={key} className="bg-muted/50 p-3 rounded-md">
+                        <p className="text-xs font-medium text-muted-foreground mb-1 capitalize">
+                          {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                        </p>
+                        <p className="text-sm">{typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-muted/30 p-3 rounded-md">
+                    <p className="text-sm text-muted-foreground">No data collected during this call</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
