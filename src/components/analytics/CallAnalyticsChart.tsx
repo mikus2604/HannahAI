@@ -76,8 +76,8 @@ export const CallAnalyticsChart = ({
 
     if (chartType === 'pie') {
       return (
-        <ResponsiveContainer width="100%" height={400}>
-          <PieChart>
+        <div className="w-full h-[400px] flex justify-center">
+          <PieChart width={400} height={400}>
             <Pie
               data={pieData}
               cx="50%"
@@ -93,14 +93,14 @@ export const CallAnalyticsChart = ({
             </Pie>
             <ChartTooltip content={<ChartTooltipContent />} />
           </PieChart>
-        </ResponsiveContainer>
+        </div>
       );
     }
 
     if (chartType === 'line') {
       return (
-        <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={chartData}>
+        <div className="w-full h-[400px]">
+          <LineChart width={800} height={400} data={chartData}>
             <XAxis 
               dataKey="period" 
               tick={{ fontSize: 12 }}
@@ -135,14 +135,14 @@ export const CallAnalyticsChart = ({
               />
             )}
           </LineChart>
-        </ResponsiveContainer>
+        </div>
       );
     }
 
     // Default to bar chart
     return (
-      <ResponsiveContainer width="100%" height={400}>
-        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+      <div className="w-full h-[400px]">
+        <BarChart width={800} height={400} data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
           <XAxis 
             dataKey="period" 
             tick={{ fontSize: 12 }}
@@ -183,7 +183,7 @@ export const CallAnalyticsChart = ({
             />
           )}
         </BarChart>
-      </ResponsiveContainer>
+      </div>
     );
   };
 

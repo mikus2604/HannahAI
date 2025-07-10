@@ -31,6 +31,7 @@ const APIsManagement = () => {
   const [elevenLabsTestResult, setElevenLabsTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [emailTestResult, setEmailTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [apiStatuses, setApiStatuses] = useState<Record<string, boolean>>({});
 
   const testElevenLabsConnection = async () => {
     setIsTestingElevenLabs(true);
@@ -139,6 +140,17 @@ const APIsManagement = () => {
     }
   };
 
+  const getStatusBadge = (apiName: string, testResult?: { success: boolean; message: string } | null) => {
+    if (testResult !== null && testResult !== undefined) {
+      return testResult.success ? (
+        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Working</Badge>
+      ) : (
+        <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Failed</Badge>
+      );
+    }
+    return <Badge variant="outline" className="border-orange-300 text-orange-700">Untested</Badge>;
+  };
+
   return (
     <div className="flex-1 space-y-6 p-6">
       <div>
@@ -191,7 +203,7 @@ const APIsManagement = () => {
                       <p className="text-sm text-muted-foreground">Advanced text-to-speech with multilingual support</p>
                     </div>
                   </div>
-                  <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
+                  {getStatusBadge('elevenlabs', elevenLabsTestResult)}
                 </div>
                 
                 <div className="flex flex-wrap gap-2">
@@ -361,7 +373,7 @@ const APIsManagement = () => {
                       <p className="text-sm text-muted-foreground">Reliable email delivery for notifications and alerts</p>
                     </div>
                   </div>
-                  <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
+                  {getStatusBadge('resend', emailTestResult)}
                 </div>
                 
                 <div className="flex flex-wrap gap-2">

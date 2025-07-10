@@ -723,7 +723,7 @@ const SuperUserDashboard = () => {
                         <p className="text-sm text-muted-foreground">Email notifications and communication service</p>
                       </div>
                     </div>
-                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
+                    <Badge variant="outline" className="border-orange-300 text-orange-700">Check APIs Management</Badge>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button 
@@ -738,10 +738,10 @@ const SuperUserDashboard = () => {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => setShowSetupModal('resend')}
+                      onClick={() => window.location.href = '/apis-management'}
                     >
                       <Settings className="h-4 w-4 mr-1" />
-                      Setup API Key
+                      Go to APIs Management
                     </Button>
                     <Button variant="outline" size="sm" asChild>
                       <a href="https://resend.com/emails" target="_blank" rel="noopener noreferrer">

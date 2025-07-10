@@ -289,7 +289,7 @@ const Integrations = () => {
                 and business tools to enhance your assistant's capabilities.
               </p>
               <Button variant="outline" asChild>
-                <a href="mailto:support@example.com">
+                <a href="mailto:support@arielonline.co.uk">
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Request Integration
                 </a>
