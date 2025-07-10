@@ -94,16 +94,16 @@ const CallDetails = () => {
   }, [timePeriod, chartFrequency]);
 
   useEffect(() => {
-    filterCallsByPeriod();
+    if (calls.length > 0) {
+      filterCallsByPeriod();
+    }
   }, [historyTimePeriod, calls]);
 
   const fetchAllData = async () => {
     setLoading(true);
-    await Promise.all([
-      fetchCalls(),
-      fetchStats(),
-      fetchChartData()
-    ]);
+    // Fetch calls first, then calculate stats based on the fetched data
+    await fetchCalls();
+    await fetchChartData();
     setLastRefresh(new Date());
     setLoading(false);
   };
@@ -122,6 +122,9 @@ const CallDetails = () => {
       const callsData = response.data.calls || [];
       setCalls(callsData);
       
+      // Calculate stats immediately after setting calls data
+      calculateStats(callsData);
+      
       // Find current active call or most recent completed call
       const activeCall = callsData.find((call: Call) => call.call_status === 'in-progress');
       const mostRecentCall = callsData[0]; // Most recent call by started_at
@@ -139,25 +142,24 @@ const CallDetails = () => {
     }
   };
 
-  const fetchStats = async () => {
+  const calculateStats = (callsData: Call[]) => {
     try {
-      // Mock data - replace with actual API calls
       const today = new Date().toISOString().split('T')[0];
       
       setTodayStats({
-        callsToday: calls.filter(call => call.started_at.startsWith(today)).length,
-        liveCalls: calls.filter(call => call.call_status === 'in-progress').length,
-        otherCalls: calls.filter(call => !['completed', 'in-progress'].includes(call.call_status)).length
+        callsToday: callsData.filter(call => call.started_at.startsWith(today)).length,
+        liveCalls: callsData.filter(call => call.call_status === 'in-progress').length,
+        otherCalls: callsData.filter(call => !['completed', 'in-progress'].includes(call.call_status)).length
       });
 
       setCallStats({
-        completed: calls.filter(call => call.call_status === 'completed').length,
-        partial: calls.filter(call => call.call_status.includes('partial')).length,
-        notCompleted: calls.filter(call => call.call_status === 'failed' || call.call_status === 'cancelled').length,
-        contactInfo: calls.filter(call => call.call_sessions?.[0]?.collected_data?.contact_info).length
+        completed: callsData.filter(call => call.call_status === 'completed').length,
+        partial: callsData.filter(call => call.call_status.includes('partial')).length,
+        notCompleted: callsData.filter(call => call.call_status === 'failed' || call.call_status === 'cancelled').length,
+        contactInfo: callsData.filter(call => call.call_sessions?.[0]?.collected_data?.contact_info).length
       });
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error('Error calculating stats:', error);
     }
   };
 
