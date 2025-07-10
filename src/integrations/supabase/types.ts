@@ -468,6 +468,10 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: boolean
       }
+      cleanup_stale_calls: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_admin_analytics: {
         Args: Record<PropertyKey, never>
         Returns: {

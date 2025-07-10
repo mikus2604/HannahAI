@@ -122,10 +122,12 @@ const CallDetails = () => {
       const callsData = response.data.calls || [];
       setCalls(callsData);
       
-      // Find current active call or most recent call
+      // Find current active call or most recent completed call
       const activeCall = callsData.find((call: Call) => call.call_status === 'in-progress');
-      const latestCall = callsData[0]; // Assuming calls are ordered by date
-      setCurrentCall(activeCall || latestCall || null);
+      const mostRecentCall = callsData[0]; // Most recent call by started_at
+      
+      // Show active call if exists, otherwise show most recent call
+      setCurrentCall(activeCall || mostRecentCall || null);
       
     } catch (error) {
       console.error('Error fetching calls:', error);

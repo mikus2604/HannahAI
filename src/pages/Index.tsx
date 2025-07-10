@@ -52,6 +52,9 @@ const Index = () => {
 
   const fetchCalls = async () => {
     try {
+      // Call cleanup function first to remove stale calls
+      await supabase.rpc('cleanup_stale_calls');
+      
       const response = await supabase.functions.invoke('get-call-logs');
       if (response.error) throw response.error;
       
