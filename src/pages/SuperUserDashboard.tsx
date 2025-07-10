@@ -457,6 +457,36 @@ const SuperUserDashboard = () => {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                User Plan Management
+              </CardTitle>
+              <CardDescription>
+                Manually update user subscription plans without payment
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UserPlanManager />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                User Role Management
+              </CardTitle>
+              <CardDescription>
+                Grant super user access by email (legacy method) - use user details popup for individual users
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <GrantSuperUser />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="revenue" className="space-y-4">
@@ -546,56 +576,204 @@ const SuperUserDashboard = () => {
         </TabsContent>
 
         <TabsContent value="system" className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Call Status Distribution (24h)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {Object.entries(systemHealth.callStatusDistribution).map(([status, count]) => (
-                    <div key={status} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {status === 'completed' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                        {status === 'failed' && <XCircle className="h-4 w-4 text-red-500" />}
-                        {status === 'initiated' && <Clock className="h-4 w-4 text-blue-500" />}
-                        <span className="capitalize">{status}</span>
+          {/* APIs Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wrench className="h-5 w-5" />
+                APIs Management
+              </CardTitle>
+              <CardDescription>
+                Configure and manage external API integrations
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-6">
+                {/* OpenAI */}
+                <div className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <Activity className="h-6 w-6 mt-1" />
+                      <div>
+                        <h3 className="font-semibold">OpenAI API</h3>
+                        <p className="text-sm text-muted-foreground">Powers Hannah, your AI receptionist</p>
                       </div>
-                      <Badge>{count}</Badge>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>System Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span>Success Rate</span>
-                    <Badge 
-                      variant={Number(systemHealth.successRate) > 95 ? 'default' : 'destructive'}
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={testOpenAI}
+                      disabled={testingStates['openai']}
                     >
-                      {systemHealth.successRate}%
-                    </Badge>
+                      <TestTube className="h-4 w-4 mr-1" />
+                      {testingStates['openai'] ? 'Testing...' : 'Test Connection'}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowSetupModal('openai')}
+                    >
+                      <Settings className="h-4 w-4 mr-1" />
+                      Setup API Key
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">
+                        View API Keys
+                      </a>
+                    </Button>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span>Calls (24h)</span>
-                    <Badge variant="outline">{systemHealth.totalCalls24h}</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Last Updated</span>
-                    <span className="text-sm text-muted-foreground">
-                      {formatDate(data.timestamp)}
-                    </span>
-                  </div>
+                  {getTestResult('openai')}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+
+                {/* Twilio */}
+                <div className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <Phone className="h-6 w-6 mt-1" />
+                      <div>
+                        <h3 className="font-semibold">Twilio</h3>
+                        <p className="text-sm text-muted-foreground">Voice and SMS communication service</p>
+                      </div>
+                    </div>
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={testTwilio}
+                      disabled={testingStates['twilio']}
+                    >
+                      <TestTube className="h-4 w-4 mr-1" />
+                      {testingStates['twilio'] ? 'Testing...' : 'Test Connection'}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowSetupModal('twilio')}
+                    >
+                      <Settings className="h-4 w-4 mr-1" />
+                      Setup API Keys
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="https://console.twilio.com/project/api-keys" target="_blank" rel="noopener noreferrer">
+                        Twilio Console
+                      </a>
+                    </Button>
+                  </div>
+                  {getTestResult('twilio')}
+                </div>
+
+                {/* Stripe */}
+                <div className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <CreditCard className="h-6 w-6 mt-1" />
+                      <div>
+                        <h3 className="font-semibold">Stripe</h3>
+                        <p className="text-sm text-muted-foreground">Payment processing service</p>
+                      </div>
+                    </div>
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={testStripe}
+                      disabled={testingStates['stripe']}
+                    >
+                      <TestTube className="h-4 w-4 mr-1" />
+                      {testingStates['stripe'] ? 'Testing...' : 'Test Connection'}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowSetupModal('stripe')}
+                    >
+                      <Settings className="h-4 w-4 mr-1" />
+                      Setup API Key
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer">
+                        Stripe Dashboard
+                      </a>
+                    </Button>
+                  </div>
+                  {getTestResult('stripe')}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Webhook URLs */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <XCircle className="h-5 w-5" />
+                Webhook URLs
+              </CardTitle>
+              <CardDescription>
+                Configure these URLs in your external services
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold">Twilio Voice Webhook URL</h4>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText('https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming');
+                        toast({
+                          title: "Copied!",
+                          description: "Voice webhook URL copied to clipboard",
+                        });
+                      }}
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <code className="bg-muted px-3 py-2 rounded block text-sm break-all">
+                    https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming
+                  </code>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Set this as your Twilio phone number's voice webhook URL
+                  </p>
+                </div>
+                
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold">Twilio SMS Webhook URL</h4>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText('https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/sms-webhook');
+                        toast({
+                          title: "Copied!",
+                          description: "SMS webhook URL copied to clipboard",
+                        });
+                      }}
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <code className="bg-muted px-3 py-2 rounded block text-sm break-all">
+                    https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/sms-webhook
+                  </code>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Set this as your Twilio phone number's SMS webhook URL
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
 
@@ -603,240 +781,7 @@ const SuperUserDashboard = () => {
           <SystemPromptManagement />
         </TabsContent>
 
-        <TabsContent value="system" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                User Plan Management
-              </CardTitle>
-              <CardDescription>
-                Manually update user subscription plans without payment
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <UserPlanManager />
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                User Role Management
-              </CardTitle>
-              <CardDescription>
-                Grant super user access by email (legacy method) - use user details popup for individual users
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <GrantSuperUser />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="settings" className="space-y-4">
-          <div className="grid gap-4">
-            {/* API Keys Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5" />
-                  API Keys & Credentials
-                </CardTitle>
-                <CardDescription>
-                  Configure your service credentials and API keys
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-6">
-                  {/* OpenAI */}
-                  <div className="border rounded-lg p-4 space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <Activity className="h-6 w-6 mt-1" />
-                        <div>
-                          <h3 className="font-semibold">OpenAI API</h3>
-                          <p className="text-sm text-muted-foreground">Powers Hannah, your AI receptionist</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={testOpenAI}
-                        disabled={testingStates['openai']}
-                      >
-                        <TestTube className="h-4 w-4 mr-1" />
-                        {testingStates['openai'] ? 'Testing...' : 'Test Connection'}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setShowSetupModal('openai')}
-                      >
-                        <Settings className="h-4 w-4 mr-1" />
-                        Setup API Key
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">
-                          View API Keys
-                        </a>
-                      </Button>
-                    </div>
-                    {getTestResult('openai')}
-                  </div>
-
-                  {/* Twilio */}
-                  <div className="border rounded-lg p-4 space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <Phone className="h-6 w-6 mt-1" />
-                        <div>
-                          <h3 className="font-semibold">Twilio</h3>
-                          <p className="text-sm text-muted-foreground">Voice and SMS communication service</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={testTwilio}
-                        disabled={testingStates['twilio']}
-                      >
-                        <TestTube className="h-4 w-4 mr-1" />
-                        {testingStates['twilio'] ? 'Testing...' : 'Test Connection'}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setShowSetupModal('twilio')}
-                      >
-                        <Settings className="h-4 w-4 mr-1" />
-                        Setup API Keys
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href="https://console.twilio.com/project/api-keys" target="_blank" rel="noopener noreferrer">
-                          Twilio Console
-                        </a>
-                      </Button>
-                    </div>
-                    {getTestResult('twilio')}
-                  </div>
-
-                  {/* Stripe */}
-                  <div className="border rounded-lg p-4 space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <CreditCard className="h-6 w-6 mt-1" />
-                        <div>
-                          <h3 className="font-semibold">Stripe</h3>
-                          <p className="text-sm text-muted-foreground">Payment processing service</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={testStripe}
-                        disabled={testingStates['stripe']}
-                      >
-                        <TestTube className="h-4 w-4 mr-1" />
-                        {testingStates['stripe'] ? 'Testing...' : 'Test Connection'}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setShowSetupModal('stripe')}
-                      >
-                        <Settings className="h-4 w-4 mr-1" />
-                        Setup API Key
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer">
-                          Stripe Dashboard
-                        </a>
-                      </Button>
-                    </div>
-                    {getTestResult('stripe')}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Webhook URLs Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <XCircle className="h-5 w-5" />
-                  Webhook URLs
-                </CardTitle>
-                <CardDescription>
-                  Configure these URLs in your external services
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold">Twilio Voice Webhook URL</h4>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => {
-                          navigator.clipboard.writeText('https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming');
-                          toast({
-                            title: "Copied!",
-                            description: "Voice webhook URL copied to clipboard",
-                          });
-                        }}
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <code className="bg-muted px-3 py-2 rounded block text-sm break-all">
-                      https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming
-                    </code>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Set this as your Twilio phone number's voice webhook URL
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold">Twilio SMS Webhook URL</h4>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => {
-                          navigator.clipboard.writeText('https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/sms-webhook');
-                          toast({
-                            title: "Copied!",
-                            description: "SMS webhook URL copied to clipboard",
-                          });
-                        }}
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <code className="bg-muted px-3 py-2 rounded block text-sm break-all">
-                      https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/sms-webhook
-                    </code>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Set this as your Twilio phone number's SMS webhook URL
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
       </Tabs>
 
       <ApiKeySetupModal

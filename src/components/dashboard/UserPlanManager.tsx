@@ -262,27 +262,29 @@ export const UserPlanManager = () => {
             {/* Plan Selection */}
             <div className="space-y-4">
               <Label className="text-base font-medium">Change Plan</Label>
-              <Select value={selectedPlan} onValueChange={setSelectedPlan}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a plan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {plans.map((plan) => {
-                    const IconComponent = plan.icon;
-                    return (
-                      <SelectItem key={plan.id} value={plan.id}>
-                        <div className="flex items-center gap-2">
-                          <IconComponent className={`h-4 w-4 ${plan.color}`} />
-                          <span>{plan.name}</span>
-                          {plan.id === userData.plan_type && (
-                            <Badge variant="secondary" className="ml-2">Current</Badge>
-                          )}
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                <Select value={selectedPlan} onValueChange={setSelectedPlan}>
+                  <SelectTrigger className="h-12 border-2 border-primary/30 bg-background text-base font-medium">
+                    <SelectValue placeholder="Select a plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plans.map((plan) => {
+                      const IconComponent = plan.icon;
+                      return (
+                        <SelectItem key={plan.id} value={plan.id} className="py-3">
+                          <div className="flex items-center gap-3">
+                            <IconComponent className={`h-5 w-5 ${plan.color}`} />
+                            <span className="font-medium">{plan.name}</span>
+                            {plan.id === userData.plan_type && (
+                              <Badge variant="secondary" className="ml-2">Current</Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
 
               {selectedPlan && selectedPlan !== userData.plan_type && (
                 <Alert>

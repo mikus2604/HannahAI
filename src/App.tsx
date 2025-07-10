@@ -84,7 +84,7 @@ const AppLayout = () => {
               <Route path="/integrations" element={<Integrations />} />
               <Route path="/plans" element={<PlanManagement />} />
               <Route path="/premium-features" element={<PremiumFeatures />} />
-              <Route path="/apis" element={<APIsManagement />} />
+              
               <Route path="/admin" element={<SuperUserDashboard />} />
               
               <Route path="*" element={<NotFound />} />

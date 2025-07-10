@@ -25,9 +25,7 @@ const items = [
   { title: "Plan Management", url: "/plans", icon: FileText },
 ];
 
-const systemItems = [
-  { title: "APIs Management", url: "/apis", icon: Wrench },
-];
+const systemItems = [];
 
 const premiumItems = [
   { title: "Premium+ Features", url: "/premium-features", icon: Crown },
