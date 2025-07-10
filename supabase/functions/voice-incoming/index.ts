@@ -352,7 +352,7 @@ CRITICAL: When sharing contact details, use the EXACT values listed above. Never
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Polly.Joanna" prosodyRate="medium">${response}</Say>
-    <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="0.5" timeout="3" partialResultCallback="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" partialResultCallbackMethod="POST">
+    <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="3" timeout="5">
     </Gather>
     <Say voice="Polly.Joanna" prosodyRate="medium">I didn't hear anything. Thank you for calling. Goodbye!</Say>
     <Hangup/>
