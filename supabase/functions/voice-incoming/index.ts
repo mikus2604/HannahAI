@@ -323,16 +323,29 @@ CRITICAL: When sharing contact details, use the EXACT values listed above. Never
         .eq('id', session.id);
 
     } else {
-      // Use custom opening message with assistant name introduction
-      response = `Hi, I'm ${assistantName}. ${openingMessage}`;
-      
-      await supabase
+      // Check if we've already sent the greeting to prevent duplicates
+      const { data: existingGreeting } = await supabase
         .from('transcripts')
-        .insert({
-          call_id: call.id,
-          speaker: 'agent', 
-          message: response
-        });
+        .select('id')
+        .eq('call_id', call.id)
+        .eq('speaker', 'agent')
+        .limit(1);
+        
+      if (!existingGreeting || existingGreeting.length === 0) {
+        // Use custom opening message with assistant name introduction
+        response = `Hi, I'm ${assistantName}. ${openingMessage}`;
+        
+        await supabase
+          .from('transcripts')
+          .insert({
+            call_id: call.id,
+            speaker: 'agent', 
+            message: response
+          });
+      } else {
+        // Greeting already sent, just return a prompt to continue
+        response = "How may I help you today?";
+      }
     }
 
     // Handle call ending scenarios
