@@ -344,14 +344,13 @@ CRITICAL: When sharing contact details, use the EXACT values listed above. Never
       });
     }
 
-    // Generate TwiML response with status callback webhook enabled
+    // Generate TwiML response for continuing conversation
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Polly.Joanna" prosodyRate="medium">${response}</Say>
     <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="1" timeout="4">
     </Gather>
     <Say voice="Polly.Joanna" prosodyRate="medium">I didn't hear anything. Thank you for calling. Goodbye!</Say>
-    <Record action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/call-status-webhook" method="POST" transcribe="true" recordingStatusCallback="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/call-status-webhook" maxLength="300" />
     <Hangup/>
 </Response>`;
 

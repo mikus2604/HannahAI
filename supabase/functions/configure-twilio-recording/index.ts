@@ -56,11 +56,11 @@ serve(async (req) => {
         body: new URLSearchParams({
           VoiceUrl: 'https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming',
           VoiceMethod: 'POST',
-          StatusCallback: 'https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming',
+          StatusCallback: 'https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/call-status-webhook',
           StatusCallbackMethod: 'POST',
           StatusCallbackEvent: 'initiated,ringing,answered,completed',
           Record: 'record-from-ringing-dual',
-          RecordingStatusCallback: 'https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming',
+          RecordingStatusCallback: 'https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/call-status-webhook',
           RecordingStatusCallbackMethod: 'POST'
         }).toString(),
       }

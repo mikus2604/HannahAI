@@ -47,7 +47,16 @@ serve(async (req) => {
         })
         .eq('twilio_call_sid', callSid);
         
+      console.log('Recording URL updated for call:', callSid);
       return new Response('Recording processed', {
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+      });
+    }
+
+    // Handle call status updates
+    if (!callStatus) {
+      console.log('No call status in webhook, skipping');
+      return new Response('No status to process', {
         headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
       });
     }
