@@ -37,87 +37,22 @@ serve(async (req) => {
 
     console.log('=== VOICE WEBHOOK CALLED ===', { callSid, from, to, callStatus, speechResult, digits, recordingUrl });
     
-    // Handle recording URL callback
+    // Redirect status and recording callbacks to dedicated webhook
     if (recordingUrl && recordingSid) {
-      console.log('Recording callback received:', { recordingUrl, recordingSid });
-      
-      // Update call with recording URL and set expiration (7 days from now)
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-      
-      await supabase
-        .from('calls')
-        .update({ 
-          recording_url: recordingUrl,
-          recording_expires_at: expiresAt.toISOString()
-        })
-        .eq('twilio_call_sid', callSid);
-        
-      return new Response('Recording processed', {
+      console.log('Recording callback received, handled by status webhook');
+      return new Response('Recording handled by status webhook', {
         headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
       });
     }
 
-    // Handle call status updates (when call ends) - RELIABLE STATUS UPDATES
+    // Redirect call status updates to dedicated webhook
     if (callStatus === 'completed' || callStatus === 'busy' || callStatus === 'failed' || callStatus === 'no-answer') {
-      const { data: existingCall } = await supabase
-        .from('calls')
-        .select('*')
-        .eq('twilio_call_sid', callSid)
-        .single();
-
-      if (existingCall) {
-        // Map Twilio status directly to final status - no content-based guessing
-        let finalStatus = 'failed';
-        
-        if (callStatus === 'completed') {
-          finalStatus = 'completed'; // Call completed successfully
-        } else if (callStatus === 'busy') {
-          finalStatus = 'failed';
-        } else if (callStatus === 'no-answer') {
-          finalStatus = 'failed';
-        } else if (callStatus === 'failed') {
-          finalStatus = 'failed';
-        }
-
-        await supabase
-          .from('calls')
-          .update({ 
-            call_status: finalStatus,
-            ended_at: new Date().toISOString()
-          })
-          .eq('twilio_call_sid', callSid);
-
-        // Trigger email notification in background for completed calls
-        if (finalStatus === 'completed') {
-          const backgroundEmailTask = async () => {
-            try {
-              const { data: { user: authUser }, error: authError } = await supabase.auth.admin.getUserById(existingCall.user_id);
-              
-              if (!authError && authUser?.email) {
-                await supabase.functions.invoke('send-call-notification', {
-                  body: { 
-                    callId: existingCall.id, 
-                    userId: existingCall.user_id,
-                    userEmail: authUser.email
-                  }
-                });
-              }
-            } catch (error) {
-              console.error('Background email notification failed:', error);
-            }
-          };
-          
-          // Use background task to avoid blocking response
-          EdgeRuntime.waitUntil(backgroundEmailTask());
-        }
-      }
-
-      // Return empty response for status webhooks
-      return new Response('', {
+      console.log('Status update received, handled by status webhook');
+      return new Response('Status handled by status webhook', {
         headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
       });
     }
+
     console.log('Request method:', req.method);
     console.log('Content-Type:', req.headers.get('content-type'));
 
@@ -342,7 +277,7 @@ Remember what was already discussed - don't repeat questions.`;
       const chatData = await chatGptResponse.json();
       response = chatData.choices[0].message.content;
 
-      // Simpler state management - let Twilio handle call completion 
+      // Update session state without changing call status (Twilio webhooks handle that)
       if (session.current_state === DIALOGUE_STATES.GREETING) {
         nextState = DIALOGUE_STATES.COLLECTING_INFO;
       } else if (session.current_state === DIALOGUE_STATES.COLLECTING_INFO) {
@@ -393,7 +328,7 @@ Remember what was already discussed - don't repeat questions.`;
         });
     }
 
-    // Handle call ending scenarios 
+    // Handle call ending scenarios
     if (nextState === DIALOGUE_STATES.ENDING) {
       // End the call properly
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -406,14 +341,14 @@ Remember what was already discussed - don't repeat questions.`;
       });
     }
 
-    // Generate TwiML response with recording enabled and natural conversation flow
+    // Generate TwiML response with status callback webhook enabled
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Polly.Joanna" prosodyRate="medium">${response}</Say>
     <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="1" timeout="4">
     </Gather>
     <Say voice="Polly.Joanna" prosodyRate="medium">I didn't hear anything. Thank you for calling. Goodbye!</Say>
-    <Record action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" transcribe="true" recordingStatusCallback="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" maxLength="300" />
+    <Record action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/call-status-webhook" method="POST" transcribe="true" recordingStatusCallback="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/call-status-webhook" maxLength="300" />
     <Hangup/>
 </Response>`;
 
