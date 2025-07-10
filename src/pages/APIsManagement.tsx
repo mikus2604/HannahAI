@@ -20,7 +20,8 @@ import {
   Volume2,
   Globe,
   Database,
-  Wrench
+  Wrench,
+  Mail
 } from "lucide-react";
 import { TwilioManagement } from "@/components/TwilioManagement";
 
@@ -28,6 +29,8 @@ const APIsManagement = () => {
   const { toast } = useToast();
   const [isTestingElevenLabs, setIsTestingElevenLabs] = useState(false);
   const [elevenLabsTestResult, setElevenLabsTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
+  const [emailTestResult, setEmailTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const testElevenLabsConnection = async () => {
     setIsTestingElevenLabs(true);
@@ -101,6 +104,41 @@ const APIsManagement = () => {
     }
   };
 
+  const testEmailNotification = async () => {
+    setIsTestingEmail(true);
+    setEmailTestResult(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('test-email-notification');
+      
+      if (error) throw error;
+      
+      setEmailTestResult({
+        success: data.success,
+        message: data.message || data.error || 'Unknown result'
+      });
+      
+      toast({
+        title: data.success ? "Email Test Successful" : "Email Test Failed",
+        description: data.message || data.error,
+        variant: data.success ? "default" : "destructive"
+      });
+    } catch (error) {
+      setEmailTestResult({
+        success: false,
+        message: "Email test failed - please check your Resend API key"
+      });
+      
+      toast({
+        title: "Email Test Failed",
+        description: "Could not send test email",
+        variant: "destructive"
+      });
+    } finally {
+      setIsTestingEmail(false);
+    }
+  };
+
   return (
     <div className="flex-1 space-y-6 p-6">
       <div>
@@ -112,7 +150,7 @@ const APIsManagement = () => {
       </div>
 
       <Tabs defaultValue="twilio" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="twilio" className="flex items-center gap-2">
             <Phone className="h-4 w-4" />
             Twilio
@@ -120,6 +158,10 @@ const APIsManagement = () => {
           <TabsTrigger value="elevenlabs" className="flex items-center gap-2">
             <Volume2 className="h-4 w-4" />
             ElevenLabs
+          </TabsTrigger>
+          <TabsTrigger value="resend" className="flex items-center gap-2">
+            <Mail className="h-4 w-4" />
+            Resend
           </TabsTrigger>
         </TabsList>
 
@@ -290,6 +332,143 @@ const APIsManagement = () => {
                       <li>Assistant's default language setting</li>
                       <li>User's language preference (if available)</li>
                     </ul>
+                  </AlertDescription>
+                </Alert>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="resend" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                Resend Email Service
+              </CardTitle>
+              <CardDescription>
+                Email notifications and communication service for mAIreceptionist
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* API Status */}
+              <div className="border rounded-lg p-4 space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    <Mail className="h-6 w-6 mt-1" />
+                    <div>
+                      <h3 className="font-semibold">Resend API</h3>
+                      <p className="text-sm text-muted-foreground">Reliable email delivery for notifications and alerts</p>
+                    </div>
+                  </div>
+                  <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Configured</Badge>
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={testEmailNotification}
+                    disabled={isTestingEmail}
+                  >
+                    {isTestingEmail ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <TestTube className="h-4 w-4 mr-1" />}
+                    {isTestingEmail ? 'Testing...' : 'Test Email'}
+                  </Button>
+                  
+                  <Button variant="outline" size="sm" asChild>
+                    <a href="https://resend.com/dashboard" target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4 mr-1" />
+                      Resend Dashboard
+                    </a>
+                  </Button>
+
+                  <Button variant="outline" size="sm" asChild>
+                    <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer">
+                      <Settings className="h-4 w-4 mr-1" />
+                      API Keys
+                    </a>
+                  </Button>
+                </div>
+
+                {emailTestResult && (
+                  <div className={`flex items-center gap-2 ${emailTestResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                    {emailTestResult.success ? (
+                      <CheckCircle className="h-4 w-4" />
+                    ) : (
+                      <XCircle className="h-4 w-4" />
+                    )}
+                    <span className="text-sm">{emailTestResult.message}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Features */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Wrench className="h-5 w-5" />
+                  Email Features
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Alert>
+                    <CheckCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Call Digest Emails:</strong> Automated daily/weekly/monthly summaries of call activity
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <Alert>
+                    <CheckCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Real-time Notifications:</strong> Instant alerts for missed calls and important events
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <Alert>
+                    <CheckCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Custom Recipients:</strong> Send notifications to specific email addresses
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <Alert>
+                    <CheckCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Professional Templates:</strong> Clean, branded email templates for all communications
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              </div>
+
+              {/* Configuration */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Configuration</h3>
+                <Alert>
+                  <Settings className="h-4 w-4" />
+                  <AlertDescription>
+                    Email notification preferences can be configured in the Assistant Settings page:
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Set notification frequency (immediate, daily, weekly, monthly)</li>
+                      <li>Specify custom email address for notifications</li>
+                      <li>Enable/disable email notifications globally</li>
+                      <li>Configure digest email content and timing</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              </div>
+
+              {/* Setup Instructions */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Setup Instructions</h3>
+                <Alert>
+                  <ExternalLink className="h-4 w-4" />
+                  <AlertDescription>
+                    To configure Resend for email notifications:
+                    <ol className="list-decimal list-inside mt-2 space-y-1">
+                      <li>Create an account at <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">resend.com</a></li>
+                      <li>Verify your sending domain at <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="text-primary underline">resend.com/domains</a></li>
+                      <li>Generate an API key at <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">resend.com/api-keys</a></li>
+                      <li>Add the RESEND_API_KEY to your Supabase secrets</li>
+                    </ol>
                   </AlertDescription>
                 </Alert>
               </div>
