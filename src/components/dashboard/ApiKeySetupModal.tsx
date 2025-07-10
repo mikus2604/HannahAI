@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Copy, ExternalLink } from "lucide-react";
 
 interface ApiKeySetupModalProps {
@@ -15,6 +16,7 @@ interface ApiKeySetupModalProps {
 
 export const ApiKeySetupModal = ({ isOpen, onClose, apiType }: ApiKeySetupModalProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [apiKey, setApiKey] = useState("");
   const [accountSid, setAccountSid] = useState("");
   const [authToken, setAuthToken] = useState("");
@@ -59,33 +61,35 @@ export const ApiKeySetupModal = ({ isOpen, onClose, apiType }: ApiKeySetupModalP
   const currentConfig = apiType ? apiConfigs[apiType] : null;
 
   const handleSubmit = async () => {
-    if (!currentConfig || !apiType) return;
+    if (!currentConfig || !apiType || !user) return;
 
     setLoading(true);
     try {
-      // For now, we'll show instructions to manually add to Supabase
-      // In a real implementation, you'd need a secure way to update secrets
-      toast({
-        title: "API Key Configuration",
-        description: "Please add these secrets manually in the Supabase dashboard for security.",
-      });
+      // Save API keys to the database
+      for (const field of currentConfig.fields) {
+        if (field.value) {
+          const { error } = await supabase.from('api_keys').upsert({
+            user_id: user.id,
+            key_name: field.key,
+            key_value: field.value,
+          });
+          
+          if (error) {
+            throw new Error(`Failed to save ${field.label}: ${error.message}`);
+          }
+        }
+      }
       
-      // Copy the configuration to clipboard
-      const configText = currentConfig.fields.map(field => 
-        `${field.key}=${field.value}`
-      ).join('\n');
-      
-      await navigator.clipboard.writeText(configText);
       toast({
-        title: "Copied to Clipboard",
-        description: "API key configuration copied. Add these to Supabase secrets.",
+        title: "API Keys Saved",
+        description: "Your API keys have been securely saved and are ready to use.",
       });
       
       onClose();
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to process API key configuration",
+        description: error instanceof Error ? error.message : "Failed to save API keys",
         variant: "destructive",
       });
     } finally {
@@ -146,8 +150,7 @@ export const ApiKeySetupModal = ({ isOpen, onClose, apiType }: ApiKeySetupModalP
               disabled={loading || currentConfig.fields.some(field => !field.value)}
               className="w-full"
             >
-              <Copy className="h-4 w-4 mr-2" />
-              Copy Configuration
+              {loading ? "Saving..." : "Save API Keys"}
             </Button>
             
             <div className="flex gap-2">
@@ -159,21 +162,12 @@ export const ApiKeySetupModal = ({ isOpen, onClose, apiType }: ApiKeySetupModalP
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Get API Keys
               </Button>
-              
-              <Button
-                variant="outline"
-                onClick={handleOpenSupabase}
-                className="flex-1"
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Supabase Secrets
-              </Button>
             </div>
           </div>
           
           <div className="text-sm text-muted-foreground p-3 bg-muted rounded">
             <p className="font-medium mb-1">Security Note:</p>
-            <p>For security, API keys must be added manually to Supabase secrets. This tool helps you format and copy the configuration.</p>
+            <p>Your API keys are encrypted and stored securely in your account. They can only be accessed by you and your authorized applications.</p>
           </div>
         </div>
       </DialogContent>

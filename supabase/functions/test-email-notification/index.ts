@@ -9,9 +9,39 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const resendApiKey = Deno.env.get('RESEND_API_KEY');
 
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function getApiKey(authHeader: string, keyName: string): Promise<string | null> {
+  const supabaseClient = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+  );
+
+  try {
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError || !userData.user) {
+      return Deno.env.get(keyName);
+    }
+
+    const { data: userApiKey, error: userKeyError } = await supabaseClient
+      .from('api_keys')
+      .select('key_value')
+      .eq('user_id', userData.user.id)
+      .eq('key_name', keyName)
+      .maybeSingle();
+
+    if (userApiKey && !userKeyError) {
+      return userApiKey.key_value;
+    }
+
+    return Deno.env.get(keyName);
+  } catch (error) {
+    console.error('Error getting API key:', error);
+    return Deno.env.get(keyName);
+  }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -19,10 +49,16 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get("Authorization") || "";
+    const resendApiKey = await getApiKey(authHeader, 'RESEND_API_KEY');
+
     if (!resendApiKey) {
       console.error('RESEND_API_KEY not configured');
       return new Response(
-        JSON.stringify({ error: 'Email service not configured' }), 
+        JSON.stringify({ 
+          success: false,
+          error: 'Resend API key is not configured. Please set it up in APIs Management.' 
+        }), 
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -30,19 +66,30 @@ serve(async (req) => {
       );
     }
 
-    const { userEmail } = await req.json();
+    const { userEmail } = await req.json().catch(() => ({ userEmail: null }));
     
-    if (!userEmail) {
-      return new Response(
-        JSON.stringify({ error: 'userEmail is required' }), 
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+    // Get user email from auth if not provided
+    let targetEmail = userEmail;
+    if (!targetEmail) {
+      const token = authHeader.replace("Bearer ", "");
+      const { data: userData } = await supabase.auth.getUser(token);
+      targetEmail = userData.user?.email;
+      
+      if (!targetEmail) {
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'No email address available for sending test notification' 
+          }), 
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
     }
 
-    console.log(`Sending test email to: ${userEmail}`);
+    console.log(`Sending test email to: ${targetEmail}`);
 
     const testEmailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -81,7 +128,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from: 'Hannah AI <notifications@resend.dev>',
-        to: [userEmail],
+        to: [targetEmail],
         subject: 'Test Email Notification - Hannah AI',
         html: testEmailHtml,
       }),
@@ -89,7 +136,7 @@ serve(async (req) => {
 
     if (emailResponse.ok) {
       const result = await emailResponse.json();
-      console.log(`Test email sent successfully to ${userEmail}:`, result);
+      console.log(`Test email sent successfully to ${targetEmail}:`, result);
       
       return new Response(
         JSON.stringify({ 
@@ -103,10 +150,11 @@ serve(async (req) => {
       );
     } else {
       const errorText = await emailResponse.text();
-      console.error(`Failed to send test email to ${userEmail}:`, errorText);
+      console.error(`Failed to send test email to ${targetEmail}:`, errorText);
       
       return new Response(
         JSON.stringify({ 
+          success: false,
           error: 'Failed to send test email',
           details: errorText
         }), 
@@ -120,7 +168,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in test-email-notification:', error);
     return new Response(
-      JSON.stringify({ error: error.message }), 
+      JSON.stringify({ 
+        success: false,
+        error: error.message 
+      }), 
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

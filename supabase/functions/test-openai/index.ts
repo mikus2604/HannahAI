@@ -1,10 +1,45 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+async function getApiKey(authHeader: string, keyName: string): Promise<string | null> {
+  const supabaseClient = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+  );
+
+  try {
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError || !userData.user) {
+      // Fallback to environment variable for unauthenticated requests
+      return Deno.env.get(keyName);
+    }
+
+    // Try to get user's stored API key first
+    const { data: userApiKey, error: userKeyError } = await supabaseClient
+      .from('api_keys')
+      .select('key_value')
+      .eq('user_id', userData.user.id)
+      .eq('key_name', keyName)
+      .maybeSingle();
+
+    if (userApiKey && !userKeyError) {
+      return userApiKey.key_value;
+    }
+
+    // Fallback to environment variable
+    return Deno.env.get(keyName);
+  } catch (error) {
+    console.error('Error getting API key:', error);
+    return Deno.env.get(keyName);
+  }
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -13,14 +48,15 @@ serve(async (req) => {
   }
 
   try {
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    const authHeader = req.headers.get("Authorization") || "";
+    const openAIApiKey = await getApiKey(authHeader, 'OPENAI_API_KEY');
     
     if (!openAIApiKey) {
       console.error('OPENAI_API_KEY is not set');
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'OpenAI API key is not configured in Supabase secrets' 
+          error: 'OpenAI API key is not configured. Please set it up in APIs Management.' 
         }), 
         {
           status: 500,
