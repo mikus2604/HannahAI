@@ -53,7 +53,7 @@ serve(async (req) => {
     // Get users who want this type of digest
     const { data: users, error: usersError } = await supabase
       .from('user_preferences')
-      .select('user_id')
+      .select('user_id, notification_email')
       .eq('notification_frequency', digestType)
       .eq('email_notifications', true);
 
@@ -76,6 +76,13 @@ serve(async (req) => {
 
     for (const user of users) {
       try {
+        // Get user profile for fallback email
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('contact_email')
+          .eq('user_id', user.user_id)
+          .single();
+
         // Get calls for this user in the date range
         const { data: calls, error: callsError } = await supabase
           .from('calls')
@@ -83,6 +90,7 @@ serve(async (req) => {
             *,
             transcripts (*)
           `)
+          .eq('user_id', user.user_id)
           .gte('started_at', startDate.toISOString())
           .lt('started_at', now.toISOString())
           .order('started_at', { ascending: false });
@@ -157,7 +165,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             from: 'Hannah AI <notifications@resend.dev>',
-            to: ['user@example.com'], // This should come from user profile
+            to: [user.notification_email || profile?.contact_email || 'user@example.com'],
             subject: `${digestType.charAt(0).toUpperCase() + digestType.slice(1)} Call Summary - ${calls.length} call${calls.length > 1 ? 's' : ''}`,
             html: emailHtml,
           }),

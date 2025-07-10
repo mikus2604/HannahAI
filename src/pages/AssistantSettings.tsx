@@ -33,6 +33,7 @@ const formSchema = z.object({
   notifications: z.object({
     emailEnabled: z.boolean(),
     frequency: z.enum(["immediate", "daily", "weekly", "monthly", "disabled"]),
+    email: z.string().email().optional().or(z.literal("")),
   }),
   recording: z.object({
     storageDuration: z.enum(["disabled", "1_week", "1_month", "6_months"]),
@@ -77,6 +78,7 @@ const AssistantSettings = () => {
       notifications: {
         emailEnabled: true,
         frequency: "immediate",
+        email: "",
       },
       recording: {
         storageDuration: "1_week",
@@ -115,6 +117,20 @@ const AssistantSettings = () => {
             form.setValue('services.bookMeeting', services.bookMeeting ?? false);
           }
         }
+
+        // Load user preferences (notifications and recording settings)
+        const { data: preferences, error: prefError } = await supabase
+          .from('user_preferences')
+          .select('email_notifications, notification_frequency, recording_storage_duration, notification_email')
+          .eq('user_id', user.id)
+          .single();
+
+        if (preferences && !prefError) {
+          form.setValue('notifications.emailEnabled', preferences.email_notifications);
+          form.setValue('notifications.frequency', preferences.notification_frequency as any);
+          form.setValue('notifications.email', preferences.notification_email || '');
+          form.setValue('recording.storageDuration', preferences.recording_storage_duration as any);
+        }
       } catch (error) {
         console.error('Error loading assistant settings:', error);
       }
@@ -127,7 +143,8 @@ const AssistantSettings = () => {
     if (!user) return;
 
     try {
-      const { error } = await supabase
+      // Update profiles table
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           assistant_name: data.assistantName,
@@ -145,7 +162,22 @@ const AssistantSettings = () => {
         })
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
+
+      // Update or insert user preferences
+      const { error: prefError } = await supabase
+        .from('user_preferences')
+        .upsert({
+          user_id: user.id,
+          email_notifications: data.notifications.emailEnabled,
+          notification_frequency: data.notifications.frequency,
+          notification_email: data.notifications.email || null,
+          recording_storage_duration: data.recording.storageDuration,
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (prefError) throw prefError;
 
       toast({
         title: "Settings saved",
@@ -469,6 +501,27 @@ const AssistantSettings = () => {
 
               <FormField
                 control={form.control}
+                name="notifications.email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notification Email Address</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter email address for notifications" 
+                        type="email"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Email address where notifications will be sent. If left empty, we'll use your account email.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="notifications.frequency"
                 render={({ field }) => (
                   <FormItem>
@@ -494,6 +547,50 @@ const AssistantSettings = () => {
                   </FormItem>
                 )}
               />
+
+              <div className="pt-4 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={async () => {
+                    const testEmail = form.getValues('notifications.email') || user?.email;
+                    if (!testEmail) {
+                      toast({
+                        title: "No email address",
+                        description: "Please enter an email address for notifications first.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+
+                    try {
+                      const { data, error } = await supabase.functions.invoke('test-email-notification', {
+                        body: { userEmail: testEmail },
+                      });
+
+                      if (error) throw error;
+
+                      toast({
+                        title: "Test email sent",
+                        description: `A test notification has been sent to ${testEmail}`,
+                      });
+                    } catch (error) {
+                      console.error('Test email error:', error);
+                      toast({
+                        title: "Test email failed",
+                        description: "Failed to send test email. Please check your settings.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  disabled={!form.watch('notifications.emailEnabled')}
+                >
+                  Send Test Email
+                </Button>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Send a test notification to verify your email settings
+                </p>
+              </div>
             </CardContent>
           </Card>
 
