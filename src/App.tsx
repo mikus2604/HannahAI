@@ -13,6 +13,7 @@ import Integrations from "./pages/Integrations";
 import PlanManagement from "./pages/PlanManagement";
 import Auth from "./pages/Auth";
 import Security from "./pages/Security";
+import APIsManagement from "./pages/APIsManagement";
 
 import NotFound from "./pages/NotFound";
 import PremiumFeatures from "./pages/PremiumFeatures";
@@ -83,6 +84,7 @@ const AppLayout = () => {
               <Route path="/integrations" element={<Integrations />} />
               <Route path="/plans" element={<PlanManagement />} />
               <Route path="/premium-features" element={<PremiumFeatures />} />
+              <Route path="/apis" element={<APIsManagement />} />
               <Route path="/admin" element={<SuperUserDashboard />} />
               
               <Route path="*" element={<NotFound />} />

@@ -1,4 +1,4 @@
-import { PhoneCall, Settings, Database, FileText, Shield, Crown, LogOut, Phone } from "lucide-react";
+import { PhoneCall, Settings, Database, FileText, Shield, Crown, LogOut, Phone, Wrench } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,10 @@ const items = [
   { title: "Security", url: "/security", icon: Shield },
   { title: "Integrations", url: "/integrations", icon: Database },
   { title: "Plan Management", url: "/plans", icon: FileText },
+];
+
+const systemItems = [
+  { title: "APIs Management", url: "/apis", icon: Wrench },
 ];
 
 const premiumItems = [
@@ -98,6 +102,28 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+
+        <SidebarGroup>
+          <SidebarGroupLabel>System</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {systemItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to={item.url} 
+                      end 
+                      className={({ isActive }) => getNavCls({ isActive })}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {open && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
         {open && !isPremiumPlus && profile?.plan_type === 'free' && (
           <SidebarGroup>

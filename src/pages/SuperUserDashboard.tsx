@@ -36,7 +36,6 @@ import {
 import GrantSuperUser from "@/components/GrantSuperUser";
 import { UserPlanManager } from "@/components/dashboard/UserPlanManager";
 import { UserDetailsModal } from "@/components/dashboard/UserDetailsModal";
-import { TwilioManagement } from "@/components/TwilioManagement";
 import { SystemPromptManagement } from "@/components/SystemPromptManagement";
 import { CallAnalyticsChart } from "@/components/analytics/CallAnalyticsChart";
 
@@ -344,12 +343,11 @@ const SuperUserDashboard = () => {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="revenue">Revenue</TabsTrigger>
           <TabsTrigger value="calls">Calls</TabsTrigger>
-          <TabsTrigger value="twilio">Twilio</TabsTrigger>
           <TabsTrigger value="prompts">Prompts</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
         </TabsList>
@@ -600,9 +598,6 @@ const SuperUserDashboard = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="twilio" className="space-y-4">
-          <TwilioManagement />
-        </TabsContent>
 
         <TabsContent value="prompts" className="space-y-4">
           <SystemPromptManagement />
