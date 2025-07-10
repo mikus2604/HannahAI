@@ -323,8 +323,8 @@ CRITICAL: When sharing contact details, use the EXACT values listed above. Never
         .eq('id', session.id);
 
     } else {
-      // Use custom opening message from user's assistant settings
-      response = openingMessage;
+      // Use custom opening message with assistant name introduction
+      response = `Hi, I'm ${assistantName}. ${openingMessage}`;
       
       await supabase
         .from('transcripts')
