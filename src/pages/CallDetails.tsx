@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import type { DateRange } from "react-day-picker";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,6 +17,7 @@ import { Phone, MessageSquare, Clock, User, RefreshCw, BarChart3, Shield } from 
 import { useToast } from "@/hooks/use-toast";
 import { CallAnalyticsChart } from "@/components/analytics/CallAnalyticsChart";
 import { Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 interface Call {
   id: string;
@@ -61,6 +67,13 @@ const CallDetails = () => {
   const [selectedPeriodData, setSelectedPeriodData] = useState<any>(null);
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("overview");
+  
+  // Date picker state
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date()); // Default to today
+  const [dateRange, setDateRange] = useState<DateRange>({ from: new Date(), to: new Date() });
+  const [isRangeMode, setIsRangeMode] = useState(false);
+  const [dateFilteredCalls, setDateFilteredCalls] = useState<Call[]>([]);
+  
   const { toast } = useToast();
 
   // Stats state
@@ -98,6 +111,111 @@ const CallDetails = () => {
       filterCallsByPeriod();
     }
   }, [historyTimePeriod, calls]);
+
+  // Filter calls by selected date/date range
+  useEffect(() => {
+    if (calls.length > 0) {
+      filterCallsByDate();
+    }
+  }, [selectedDate, dateRange, isRangeMode, calls]);
+
+  const filterCallsByDate = () => {
+    let filtered = calls;
+
+    if (isRangeMode && dateRange.from) {
+      // Date range filtering
+      const startDate = new Date(dateRange.from);
+      startDate.setHours(0, 0, 0, 0);
+      
+      let endDate = dateRange.to ? new Date(dateRange.to) : new Date(dateRange.from);
+      endDate.setHours(23, 59, 59, 999);
+
+      filtered = calls.filter(call => {
+        const callDate = new Date(call.started_at);
+        return callDate >= startDate && callDate <= endDate;
+      });
+    } else {
+      // Single date filtering
+      const filterDate = new Date(selectedDate);
+      const startOfDay = new Date(filterDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(filterDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      filtered = calls.filter(call => {
+        const callDate = new Date(call.started_at);
+        return callDate >= startOfDay && callDate <= endOfDay;
+      });
+    }
+
+    setDateFilteredCalls(filtered);
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setSelectedDate(date);
+      if (!isRangeMode) {
+        // Update stats based on selected date
+        calculateDateStats(date);
+      }
+    }
+  };
+
+  const handleDateRangeSelect = (range: DateRange | undefined) => {
+    if (range) {
+      setDateRange(range);
+      if (isRangeMode && range.from) {
+        calculateRangeStats(range);
+      }
+    }
+  };
+
+  const calculateDateStats = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    const daysCalls = calls.filter(call => call.started_at.startsWith(dateStr));
+    
+    setTodayStats({
+      callsToday: daysCalls.length,
+      liveCalls: daysCalls.filter(call => call.call_status === 'in-progress').length,
+      otherCalls: 0
+    });
+
+    setCallStats({
+      completed: daysCalls.filter(call => call.call_status === 'completed').length,
+      partial: daysCalls.filter(call => call.call_status.includes('partial')).length,
+      notCompleted: daysCalls.filter(call => call.call_status === 'failed' || call.call_status === 'cancelled').length,
+      contactInfo: daysCalls.filter(call => call.call_sessions?.[0]?.collected_data?.contact_info).length
+    });
+  };
+
+  const calculateRangeStats = (range: DateRange) => {
+    if (!range.from) return;
+    
+    const startDate = new Date(range.from);
+    startDate.setHours(0, 0, 0, 0);
+    
+    let endDate = range.to ? new Date(range.to) : new Date(range.from);
+    endDate.setHours(23, 59, 59, 999);
+
+    const rangeCalls = calls.filter(call => {
+      const callDate = new Date(call.started_at);
+      return callDate >= startDate && callDate <= endDate;
+    });
+
+    setTodayStats({
+      callsToday: rangeCalls.length,
+      liveCalls: rangeCalls.filter(call => call.call_status === 'in-progress').length,
+      otherCalls: 0
+    });
+
+    setCallStats({
+      completed: rangeCalls.filter(call => call.call_status === 'completed').length,
+      partial: rangeCalls.filter(call => call.call_status.includes('partial')).length,
+      notCompleted: rangeCalls.filter(call => call.call_status === 'failed' || call.call_status === 'cancelled').length,
+      contactInfo: rangeCalls.filter(call => call.call_sessions?.[0]?.collected_data?.contact_info).length
+    });
+  };
 
   const fetchAllData = async () => {
     setLoading(true);
@@ -338,6 +456,116 @@ const CallDetails = () => {
         </div>
       </div>
 
+      {/* Date Picker Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CalendarIcon className="h-5 w-5" />
+            Date Filter
+          </CardTitle>
+          <CardDescription>
+            Filter calls by specific date or date range. Defaults to today's calls.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4 items-start">
+            {/* Date Mode Toggle */}
+            <div className="flex gap-2">
+              <Button
+                variant={!isRangeMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setIsRangeMode(false)}
+              >
+                Single Date
+              </Button>
+              <Button
+                variant={isRangeMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setIsRangeMode(true)}
+              >
+                Date Range
+              </Button>
+            </div>
+
+            {/* Single Date Picker */}
+            {!isRangeMode && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-[240px] justify-start text-left font-normal",
+                      !selectedDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={handleDateSelect}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
+
+            {/* Date Range Picker */}
+            {isRangeMode && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-[300px] justify-start text-left font-normal",
+                      !dateRange.from && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "LLL dd, y")} -{" "}
+                          {format(dateRange.to, "LLL dd, y")}
+                        </>
+                      ) : (
+                        format(dateRange.from, "LLL dd, y")
+                      )
+                    ) : (
+                      <span>Pick a date range</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange.from}
+                    selected={dateRange}
+                    onSelect={handleDateRangeSelect}
+                    numberOfMonths={2}
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
+
+            {/* Results Summary */}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>•</span>
+              <span>{dateFilteredCalls.length} calls found</span>
+              {isRangeMode && dateRange.from && dateRange.to && (
+                <span>in {Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24)) + 1} days</span>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -543,7 +771,7 @@ const CallDetails = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCalls.map((call) => (
+                  {dateFilteredCalls.map((call) => (
                     <TableRow key={call.id}>
                       <TableCell>
                         <Button 
@@ -563,10 +791,10 @@ const CallDetails = () => {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {filteredCalls.length === 0 && (
+                  {dateFilteredCalls.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                        No calls found for the selected time period
+                        No calls found for the selected date{isRangeMode ? ' range' : ''}
                       </TableCell>
                     </TableRow>
                   )}
