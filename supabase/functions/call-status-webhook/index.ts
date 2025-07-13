@@ -17,6 +17,10 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // First, run cleanup for stale calls
+    await supabase.rpc('cleanup_stale_calls');
+    console.log('Stale calls cleanup completed');
+
     const formData = await req.formData();
     const callSid = formData.get('CallSid') as string;
     const callStatus = formData.get('CallStatus') as string;
