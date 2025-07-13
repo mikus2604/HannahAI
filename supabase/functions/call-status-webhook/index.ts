@@ -76,9 +76,14 @@ serve(async (req) => {
       });
     }
 
-    // Map Twilio status to our status with reliable logic
-    let finalStatus = 'failed';
+    // Map Twilio status to our status with improved logic
+    let finalStatus = existingCall.call_status; // Default to current status
     let endedAt = null;
+
+    console.log('Processing status change:', { 
+      currentStatus: existingCall.call_status, 
+      newTwilioStatus: callStatus 
+    });
 
     switch (callStatus) {
       case 'completed':
@@ -93,13 +98,27 @@ serve(async (req) => {
         endedAt = new Date().toISOString();
         break;
       case 'in-progress':
-      case 'ringing':
-        // Keep as in-progress, don't update ended_at
         finalStatus = 'in-progress';
+        // Don't set ended_at for in-progress calls
+        break;
+      case 'ringing':
+        finalStatus = 'in-progress'; // Treat ringing as in-progress
+        break;
+      case 'queued':
+      case 'initiated':
+        finalStatus = 'initiated';
         break;
       default:
-        console.log('Unknown call status:', callStatus);
-        finalStatus = existingCall.call_status; // Keep current status
+        console.log('Unknown call status, keeping current:', callStatus);
+        // Keep existing status for unknown statuses
+    }
+
+    // Only update if status actually changed
+    if (finalStatus === existingCall.call_status && !callDuration) {
+      console.log('No status change needed, skipping update');
+      return new Response('No changes needed', {
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+      });
     }
 
     // Update call record
