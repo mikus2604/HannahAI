@@ -125,12 +125,9 @@ const CallDetails = () => {
       // Calculate stats immediately after setting calls data
       calculateStats(callsData);
       
-      // Find current active call or most recent completed call
-      const activeCall = callsData.find((call: Call) => call.call_status === 'in-progress');
-      const mostRecentCall = callsData[0]; // Most recent call by started_at
-      
-      // Show active call if exists, otherwise show most recent call
-      setCurrentCall(activeCall || mostRecentCall || null);
+  // Find current active call
+  const activeCall = callsData.find((call: Call) => call.call_status === 'in-progress');
+  setCurrentCall(activeCall || null);
       
     } catch (error) {
       console.error('Error fetching calls:', error);
@@ -149,7 +146,7 @@ const CallDetails = () => {
       setTodayStats({
         callsToday: callsData.filter(call => call.started_at.startsWith(today)).length,
         liveCalls: callsData.filter(call => call.call_status === 'in-progress').length,
-        otherCalls: callsData.filter(call => !['completed', 'in-progress'].includes(call.call_status)).length
+        otherCalls: 0 // Removed other calls tracking
       });
 
       setCallStats({
@@ -353,7 +350,7 @@ const CallDetails = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Phone className="h-5 w-5" />
-                {currentCall?.call_status === 'in-progress' ? 'Current Call' : 'Last Call'}
+                Current Call
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -382,14 +379,14 @@ const CallDetails = () => {
                 </div>
               ) : (
                 <div className="text-center py-4 text-muted-foreground">
-                  No calls yet
+                  No live calls currently
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Today's Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center">
@@ -414,28 +411,20 @@ const CallDetails = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <MessageSquare className="h-8 w-8 text-orange-600" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-muted-foreground">Other Calls</p>
-                    <p className="text-2xl font-bold">{todayStats.otherCalls}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Stats Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
+            <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/customer-contacts')}>
               <CardHeader>
-                <CardTitle>Customer Contact Info</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  Customer Contact Info
+                  <User className="h-5 w-5" />
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">{callStats.contactInfo}</div>
-                <p className="text-muted-foreground">Contacts collected</p>
+                <p className="text-muted-foreground">Contacts collected - Click to manage</p>
               </CardContent>
             </Card>
 

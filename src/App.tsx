@@ -14,6 +14,7 @@ import PlanManagement from "./pages/PlanManagement";
 import Auth from "./pages/Auth";
 import Security from "./pages/Security";
 import APIsManagement from "./pages/APIsManagement";
+import CustomerContacts from "./pages/CustomerContacts";
 
 import NotFound from "./pages/NotFound";
 import PremiumFeatures from "./pages/PremiumFeatures";
@@ -78,7 +79,9 @@ const AppLayout = () => {
           <main className="flex-1 overflow-x-hidden">
             <Routes>
               <Route path="/" element={<CallDetails />} />
+              <Route path="/call-details" element={<CallDetails />} />
               <Route path="/call/:callId" element={<SpecificCallDetails />} />
+              <Route path="/customer-contacts" element={<CustomerContacts />} />
               <Route path="/settings" element={<AssistantSettings />} />
               <Route path="/security" element={<Security />} />
               <Route path="/integrations" element={<Integrations />} />
