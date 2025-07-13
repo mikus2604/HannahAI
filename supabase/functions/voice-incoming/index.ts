@@ -260,6 +260,65 @@ CRITICAL: When sharing contact details, use the EXACT values listed above. Never
         content: speechResult
       });
 
+      // FIRST: Extract data from the speech before generating response
+      const extractionPrompt = `Extract structured information from this caller message: "${speechResult}"
+
+      Look for and extract the following specific information:
+      1. REASON FOR CALL - What is the caller calling about? (e.g., "appointment", "complaint", "inquiry", "support")
+      2. CALLER NAME - Full name of the person calling
+      3. CALLER PHONE NUMBER - Phone number (format properly)
+      4. CALLER EMAIL - Email address if provided
+      5. PERSON THEY WANT TO SPEAK TO - Who specifically they're looking for (e.g., "Dr. Smith", "Manager", "Sarah from sales")
+      6. MESSAGE - Any specific message they want to leave
+      7. ADDITIONAL INFO - Any other important details
+
+      Current collected data: ${JSON.stringify(session.collected_data)}
+
+      Return ONLY a JSON object with extracted information. If no new information is found, return empty object {}.
+      Use exactly these field names:
+      {
+        "reason_for_call": "Brief description of why they're calling",
+        "caller_name": "Full name",
+        "caller_phone": "+1 (555) 123-4567", 
+        "caller_email": "email@example.com",
+        "looking_for": "Person or department they want to speak to",
+        "message": "Any specific message they want to leave",
+        "additional_info": "Other relevant details"
+      }`;
+
+      // Extract data using OpenAI
+      const extractionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: extractionPrompt },
+            { role: 'user', content: speechResult }
+          ],
+          max_tokens: 300,
+          temperature: 0.1,
+        }),
+      });
+
+      let extractedData = {};
+      if (extractionResponse.ok) {
+        const extractionResult = await extractionResponse.json();
+        try {
+          extractedData = JSON.parse(extractionResult.choices[0].message.content.trim());
+          console.log('Extracted data:', extractedData);
+        } catch (e) {
+          console.warn('Could not parse extracted data:', e);
+        }
+      }
+
+      // Merge with existing collected data
+      const updatedCollectedData = { ...session.collected_data, ...extractedData };
+      console.log('Updated collected data:', updatedCollectedData);
+
       // Get ChatGPT response with conversation context
       const chatGptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -313,14 +372,17 @@ CRITICAL: When sharing contact details, use the EXACT values listed above. Never
           message: response
         });
 
-      // Update session state
+      // Update session state with collected data
       await supabase
         .from('call_sessions')
         .update({
           current_state: nextState,
+          collected_data: updatedCollectedData,
           context: { ...session.context, last_response: response }
         })
         .eq('id', session.id);
+
+      console.log('Session updated with collected data:', updatedCollectedData);
 
     } else {
       // Check if we've already sent the greeting to prevent duplicates
