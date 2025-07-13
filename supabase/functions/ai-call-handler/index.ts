@@ -62,26 +62,27 @@ serve(async (req) => {
     // Extract contact information and messages from the user query
     const extractionPrompt = `Extract structured information from this caller message: "${userQuery}"
 
-    Look for and extract:
-    - Caller name
-    - Phone numbers (format them properly)
-    - Email addresses 
-    - Messages for specific people
-    - Appointment requests
-    - Contact information
-    - Any important details to pass along
+    Look for and extract the following specific information:
+    1. REASON FOR CALL - What is the caller calling about? (e.g., "appointment", "complaint", "inquiry", "support")
+    2. CALLER NAME - Full name of the person calling
+    3. CALLER PHONE NUMBER - Phone number (format properly)
+    4. CALLER EMAIL - Email address if provided
+    5. PERSON THEY WANT TO SPEAK TO - Who specifically they're looking for (e.g., "Dr. Smith", "Manager", "Sarah from sales")
+    6. MESSAGE - Any specific message they want to leave
+    7. ADDITIONAL INFO - Any other important details
 
     Current collected data: ${JSON.stringify(existingCollectedData)}
 
     Return ONLY a JSON object with extracted information. If no new information is found, return empty object {}.
-    Example format:
+    Use exactly these field names:
     {
-      "caller_name": "John Smith",
-      "phone_number": "+1 (555) 123-4567", 
-      "email": "john@example.com",
-      "message_for": "Aaron",
-      "message": "Please call me back as soon as possible",
-      "appointment_request": "Next Tuesday at 2pm"
+      "reason_for_call": "Brief description of why they're calling",
+      "caller_name": "Full name",
+      "caller_phone": "+1 (555) 123-4567", 
+      "caller_email": "email@example.com",
+      "looking_for": "Person or department they want to speak to",
+      "message": "Any specific message they want to leave",
+      "additional_info": "Other relevant details"
     }`;
 
     // Get data extraction from OpenAI

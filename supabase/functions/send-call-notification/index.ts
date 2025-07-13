@@ -107,12 +107,16 @@ serve(async (req) => {
       );
     }
 
-    // Get call details with transcript
+    // Get call details with transcript and collected data
     const { data: call, error: callError } = await supabase
       .from('calls')
       .select(`
         *,
-        transcripts (*)
+        transcripts (*),
+        call_sessions (
+          collected_data,
+          current_state
+        )
       `)
       .eq('id', callId)
       .single();
@@ -157,9 +161,29 @@ serve(async (req) => {
          </a>`
       : '<p>No recording available</p>';
 
+    // Get collected data from call session
+    const collectedData = call.call_sessions?.[0]?.collected_data || {};
+    console.log('Collected data for email:', collectedData);
+    
+    // Create collected data HTML section
+    const collectedDataHtml = Object.keys(collectedData).length > 0 
+      ? `<div style="background-color: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0;">
+           <h3>📋 Collected Information</h3>
+           <div style="background-color: white; padding: 15px; border-radius: 4px;">
+             ${collectedData.reason_for_call ? `<p><strong>Reason for Call:</strong> ${collectedData.reason_for_call}</p>` : ''}
+             ${collectedData.caller_name ? `<p><strong>Caller Name:</strong> ${collectedData.caller_name}</p>` : ''}
+             ${collectedData.caller_phone ? `<p><strong>Phone Number:</strong> ${collectedData.caller_phone}</p>` : ''}
+             ${collectedData.caller_email ? `<p><strong>Email:</strong> ${collectedData.caller_email}</p>` : ''}
+             ${collectedData.looking_for ? `<p><strong>Looking For:</strong> ${collectedData.looking_for}</p>` : ''}
+             ${collectedData.message ? `<p><strong>Message:</strong> ${collectedData.message}</p>` : ''}
+             ${collectedData.additional_info ? `<p><strong>Additional Info:</strong> ${collectedData.additional_info}</p>` : ''}
+           </div>
+         </div>`
+      : '';
+
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Call Notification</h2>
+        <h2>📞 Call Notification</h2>
         
         <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3>Call Details</h3>
@@ -170,8 +194,10 @@ serve(async (req) => {
           <p><strong>Status:</strong> ${call.call_status}</p>
         </div>
 
+        ${collectedDataHtml}
+
         <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3>Call Transcript</h3>
+          <h3>📝 Call Transcript</h3>
           <div style="background-color: white; padding: 15px; border-radius: 4px;">
             ${transcriptHtml}
           </div>
