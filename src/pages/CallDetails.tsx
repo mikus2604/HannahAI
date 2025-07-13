@@ -329,28 +329,6 @@ const CallDetails = () => {
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button 
-            onClick={async () => {
-              try {
-                await supabase.rpc('cleanup_stale_calls');
-                toast({
-                  title: "Success",
-                  description: "Stale calls cleaned up successfully",
-                });
-                await fetchCalls();
-              } catch (error) {
-                toast({
-                  title: "Error", 
-                  description: "Failed to cleanup stale calls",
-                  variant: "destructive"
-                });
-              }
-            }} 
-            variant="outline" 
-            className="w-full sm:w-auto"
-          >
-            Cleanup Stale Calls
-          </Button>
           <Button variant="outline" asChild className="w-full sm:w-auto">
             <Link to="/premium-features">
               <Shield className="h-4 w-4 mr-2" />
