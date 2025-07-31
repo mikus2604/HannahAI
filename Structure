@@ -1,0 +1,8 @@
+/date_picker_app
+    /static
+        /css
+            - style.css
+    /templates
+        - index.html
+    - app.py
+    - requirements.txt

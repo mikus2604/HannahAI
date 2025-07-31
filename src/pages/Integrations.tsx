@@ -4,13 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
-import { 
-  Calendar, 
-  TestTube, 
-  CheckCircle, 
-  XCircle, 
-  Settings, 
+import { useState, useEffect } from "react";
+import {
+  Calendar,
+  TestTube,
+  CheckCircle,
+  XCircle,
+  Settings,
   ExternalLink,
   MessageSquare
 } from "lucide-react";
@@ -19,38 +19,45 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Integrations = () => {
   const { toast } = useToast();
+  const [userId, setUserId] = useState<string | null>(null);
   const [testingStates, setTestingStates] = useState<Record<string, boolean>>({});
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
   const [configModal, setConfigModal] = useState<{ open: boolean; integration: any | null }>({ open: false, integration: null });
   const [formData, setFormData] = useState<Record<string, string>>({});
 
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user?.id) setUserId(data.user.id);
+    });
+  }, []);
+
   const testAPI = async (apiName: string, testFunction: () => Promise<any>) => {
     setTestingStates(prev => ({ ...prev, [apiName]: true }));
-    
+
     try {
       const result = await testFunction();
-      setTestResults(prev => ({ 
-        ...prev, 
-        [apiName]: { 
-          success: result.success, 
-          message: result.message || result.error 
-        } 
+      setTestResults(prev => ({
+        ...prev,
+        [apiName]: {
+          success: result.success,
+          message: result.message || result.error
+        }
       }));
-      
+
       toast({
         title: result.success ? "Test Successful" : "Test Failed",
         description: result.message || result.error,
         variant: result.success ? "default" : "destructive",
       });
     } catch (error) {
-      setTestResults(prev => ({ 
-        ...prev, 
-        [apiName]: { 
-          success: false, 
-          message: "Connection test failed" 
-        } 
+      setTestResults(prev => ({
+        ...prev,
+        [apiName]: {
+          success: false,
+          message: "Connection test failed"
+        }
       }));
-      
+
       toast({
         title: "Test Failed",
         description: "Could not connect to test the API",
@@ -62,20 +69,76 @@ const Integrations = () => {
   };
 
   const testCalcom = () => testAPI('calcom', async () => {
-    const { data, error } = await supabase.functions.invoke('test-calcom');
+    if (!userId) throw new Error("User not loaded");
+
+    const { data, error } = await supabase.functions.invoke('test-calcom', {
+      body: JSON.stringify({ user_id: userId })
+    });
+
     if (error) throw error;
     return data;
   });
 
+  const loadCalcomCredentials = async () => {
+    if (!userId) return;
+
+    const { data, error } = await supabase
+      .from('api_keys')
+      .select('key_name, key_value')
+      .eq('user_id', userId)
+      .in('key_name', ['calcom_username', 'calcom_api_key']);
+
+    if (!error && data?.length) {
+      const creds: Record<string, string> = {};
+      for (const item of data) {
+        if (item.key_name === 'calcom_username') creds.username = item.key_value;
+        if (item.key_name === 'calcom_api_key') creds.apiKey = item.key_value;
+      }
+      setFormData({
+        username: creds.username || '',
+        apiKey: creds.apiKey ? creds.apiKey.slice(0, 8) + '***' : ''
+      });
+    }
+  };
+
+  const saveConfiguration = async () => {
+    if (!configModal.integration || !userId) return;
+
+    const updates = [
+      { key_name: 'calcom_username', key_value: formData.username },
+      { key_name: 'calcom_api_key', key_value: formData.apiKey }
+    ];
+
+    for (const entry of updates) {
+      const { error } = await supabase
+        .from('api_keys')
+        .upsert({
+          user_id: userId,
+          key_name: entry.key_name,
+          key_value: entry.key_value,
+        }, { onConflict: ['user_id', 'key_name'] });
+
+      if (error) {
+        toast({
+          title: 'Save Failed',
+          description: `Could not save ${entry.key_name}`,
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+
+    toast({
+      title: "Saved",
+      description: "Cal.com configuration saved successfully.",
+    });
+    closeConfigModal();
+  };
+
   const openConfigModal = (integration: any) => {
     setConfigModal({ open: true, integration });
-    // Pre-populate form with existing values if any
-    const initialData: Record<string, string> = {};
-    if (integration.id === 'calcom') {
-      initialData.username = '';
-      initialData.apiKey = '';
-    }
-    setFormData(initialData);
+    setFormData({ username: '', apiKey: '' });
+    loadCalcomCredentials();
   };
 
   const closeConfigModal = () => {
@@ -85,29 +148,6 @@ const Integrations = () => {
 
   const handleFormChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const saveConfiguration = async () => {
-    if (!configModal.integration) return;
-
-    const integration = configModal.integration;
-    
-    // Trigger the appropriate secret forms based on the integration
-    if (integration.secretName) {
-      // Single secret (Cal.com)
-      const event = new CustomEvent('lov-secret-form', {
-        detail: { name: integration.secretName }
-      });
-      window.dispatchEvent(event);
-    }
-    
-    toast({
-      title: "Configuration Started",
-      description: `Please configure your ${integration.title} secrets using the secure forms.`,
-      variant: "default",
-    });
-    
-    closeConfigModal();
   };
 
   const renderConfigForm = () => {
@@ -161,7 +201,7 @@ const Integrations = () => {
       secretName: 'CALCOM_API_KEY',
       testFunction: testCalcom,
       links: [
-        { label: 'Cal.com Settings', url: 'https://cal.com/settings/developer' },
+        { label: 'Cal.com Settings', url: 'https://app.cal.com/settings' },
         { label: 'API Documentation', url: 'https://developer.cal.com' }
       ]
     }
@@ -181,7 +221,7 @@ const Integrations = () => {
   const getTestResult = (id: string) => {
     const result = testResults[id];
     if (!result) return null;
-    
+
     return (
       <div className={`flex items-center gap-2 mt-2 ${result.success ? 'text-green-600' : 'text-red-600'}`}>
         {result.success ? (
@@ -201,7 +241,6 @@ const Integrations = () => {
         <p className="text-muted-foreground">Connect external services to enhance your assistant's capabilities</p>
       </div>
 
-      {/* Cal.com Integration Section */}
       <div className="grid gap-6">
         <Card>
           <CardHeader>
@@ -229,8 +268,8 @@ const Integrations = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => openConfigModal(integration)}
                     >
@@ -239,8 +278,8 @@ const Integrations = () => {
                     </Button>
 
                     {integration.testFunction && (
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={integration.testFunction}
                         disabled={testingStates[integration.id]}
@@ -251,9 +290,9 @@ const Integrations = () => {
                     )}
 
                     {integration.links.map((link) => (
-                      <Button 
+                      <Button
                         key={link.label}
-                        variant="ghost" 
+                        variant="ghost"
                         size="sm"
                         asChild
                       >
@@ -271,35 +310,8 @@ const Integrations = () => {
             </div>
           </CardContent>
         </Card>
-
-        {/* Additional Integrations Coming Soon */}
-        <Card>
-          <CardHeader>
-            <CardTitle>More Integrations Coming Soon</CardTitle>
-            <CardDescription>
-              We're working on adding more service integrations
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8">
-              <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-semibold mb-2">Additional Services</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                We're working on adding more scheduling platforms, CRM systems, 
-                and business tools to enhance your assistant's capabilities.
-              </p>
-              <Button variant="outline" asChild>
-                <a href="mailto:support@arielonline.co.uk">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Request Integration
-                </a>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Configuration Modal */}
       <Dialog open={configModal.open} onOpenChange={(open) => !open && closeConfigModal()}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -310,7 +322,7 @@ const Integrations = () => {
               Enter your {configModal.integration?.title} credentials and API keys.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-4">
             {renderConfigForm()}
           </div>

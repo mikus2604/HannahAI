@@ -1,0 +1,12 @@
+/* Custom styles for the date picker */
+.datepicker table tr th,
+.datepicker table tr td {
+    text-align: center;
+    width: 36px;
+    height: 36px;
+    line-height: 36px;
+}
+
+.datepicker table tr th {
+    color: #007bff;
+}

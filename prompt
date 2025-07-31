@@ -1,0 +1,1 @@
+Debug and fix the "Extract Collected Data" feature, which currently throws an error: "Failed to extract collected data".

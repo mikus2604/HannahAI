@@ -1,0 +1,19 @@
+from dataclasses import dataclass
+
+@dataclass
+class CallData:
+    caller_name: str
+    call_time: str
+    call_duration: str
+    call_summary: str
+
+class CallDetailsExtractor:
+    def extract(self) -> CallData:
+        # Simulate data extraction from a call details page
+        # In a real implementation, this might involve web scraping or API calls
+        return CallData(
+            caller_name="John Doe",
+            call_time="2023-10-01 14:30",
+            call_duration="15 minutes",
+            call_summary="Discussed project milestones and deadlines."
+        )

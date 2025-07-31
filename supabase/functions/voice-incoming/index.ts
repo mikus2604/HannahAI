@@ -6,7 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Dialogue states
 const DIALOGUE_STATES = {
   GREETING: 'greeting',
   COLLECTING_INFO: 'collecting_info',
@@ -35,28 +34,18 @@ serve(async (req) => {
     const recordingUrl = formData.get('RecordingUrl') as string;
     const recordingSid = formData.get('RecordingSid') as string;
 
-    console.log('=== VOICE WEBHOOK CALLED ===', { callSid, from, to, callStatus, speechResult, digits, recordingUrl });
-    
-    // Redirect status and recording callbacks to dedicated webhook
     if (recordingUrl && recordingSid) {
-      console.log('Recording callback received, handled by status webhook');
       return new Response('Recording handled by status webhook', {
         headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
       });
     }
 
-    // Redirect call status updates to dedicated webhook
-    if (callStatus === 'completed' || callStatus === 'busy' || callStatus === 'failed' || callStatus === 'no-answer') {
-      console.log('Status update received, handled by status webhook');
+    if (["completed", "busy", "failed", "no-answer"].includes(callStatus)) {
       return new Response('Status handled by status webhook', {
         headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
       });
     }
 
-    console.log('Request method:', req.method);
-    console.log('Content-Type:', req.headers.get('content-type'));
-
-    // Find the user who owns this phone number
     const { data: phoneAssignment } = await supabase
       .from('phone_assignments')
       .select('user_id')
@@ -65,7 +54,6 @@ serve(async (req) => {
       .single();
 
     if (!phoneAssignment) {
-      console.error('No user found for phone number:', to);
       const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Polly.Joanna" prosodyRate="medium">This number is not configured. Please contact support.</Say>
@@ -76,362 +64,83 @@ serve(async (req) => {
       });
     }
 
-    // Get or create call record
-    let { data: call, error: callError } = await supabase
-      .from('calls')
-      .select('*')
-      .eq('twilio_call_sid', callSid)
-      .single();
+    const assistantResponse = "Let me check that for you...";
 
-    if (callError && callError.code === 'PGRST116') {
-      // Call doesn't exist, create it
-      const { data: newCall, error: createError } = await supabase
+    // Immediately respond to caller while we process the AI logic in background
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Joanna" prosodyRate="medium">${assistantResponse}</Say>
+  <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="1" timeout="3">
+  </Gather>
+  <Say voice="Polly.Joanna" prosodyRate="medium">I didn't catch that. Please try again.</Say>
+  <Hangup/>
+</Response>`;
+
+    // Kick off background processing (no await)
+    (async () => {
+      const { data: call } = await supabase
         .from('calls')
-        .insert({
-          twilio_call_sid: callSid,
-          from_number: from,
-          to_number: to,
-          call_status: 'in-progress',
-          user_id: phoneAssignment.user_id
-        })
-        .select()
+        .select('id')
+        .eq('twilio_call_sid', callSid)
         .single();
 
-      if (createError) {
-        console.error('Error creating call:', createError);
-        throw createError;
-      }
-      call = newCall;
-    }
+      if (!call) return;
 
-    // Get or create call session
-    let { data: session, error: sessionError } = await supabase
-      .from('call_sessions')
-      .select('*')
-      .eq('call_id', call.id)
-      .single();
-
-    if (sessionError && sessionError.code === 'PGRST116') {
-      // Session doesn't exist, create it
-      const { data: newSession, error: createSessionError } = await supabase
-        .from('call_sessions')
-        .insert({
-          call_id: call.id,
-          current_state: DIALOGUE_STATES.GREETING,
-          collected_data: {},
-          context: {}
-        })
-        .select()
-        .single();
-
-      if (createSessionError) {
-        console.error('Error creating session:', createSessionError);
-        throw createSessionError;
-      }
-      session = newSession;
-    }
-
-    // Get user's assistant settings, greeting messages and system prompt
-    const { data: userProfile } = await supabase
-      .from('profiles')
-      .select('assistant_name, opening_message, contact_phone, contact_email, website, office_address, assistant_services')
-      .eq('user_id', phoneAssignment.user_id)
-      .single();
-
-    const { data: greetings } = await supabase
-      .from('greeting_messages')
-      .select('*')
-      .eq('user_id', phoneAssignment.user_id)
-      .eq('is_active', true)
-      .limit(1);
-
-    const { data: systemPrompts } = await supabase
-      .from('system_prompts')
-      .select('*')
-      .eq('user_id', phoneAssignment.user_id)
-      .eq('is_active', true)
-      .limit(1);
-
-    const activeGreeting = greetings?.[0];
-    const activeSystemPrompt = systemPrompts?.[0];
-    const assistantName = userProfile?.assistant_name || 'Assistant';
-    const openingMessage = userProfile?.opening_message || 'Hello! Thank you for calling. How may I help you today?';
-    const assistantServices = userProfile?.assistant_services || {
-      takeContactInfo: true,
-      provideContactDetails: false,
-      sayMessage: true,
-      bookMeeting: false
-    };
-
-    // Process speech input with ChatGPT if provided
-    let response = '';
-    let nextState = session.current_state;
-
-    if (speechResult) {
-      // Save user's speech to transcripts
-      await supabase
-        .from('transcripts')
-        .insert({
-          call_id: call.id,
-          speaker: 'caller',
-          message: speechResult
-        });
-
-      // Get conversation history for context
-      const { data: transcripts } = await supabase
-        .from('transcripts')
-        .select('speaker, message')
-        .eq('call_id', call.id)
-        .order('timestamp', { ascending: true });
-
-      // Create system prompt with user's custom instructions and assistant name
-      const contactInfo = userProfile ? `
-Contact Information (share these ACTUAL details when asked):
-- Phone: ${userProfile.contact_phone || 'Not available'}
-- Email: ${userProfile.contact_email || 'Not available'} 
-- Website: ${userProfile.website || 'Not available'}
-- Address: ${userProfile.office_address || 'Not available'}` : '';
-
-      const serviceRules = `
-Available Services (only provide these if enabled):
-- ${assistantServices.takeContactInfo ? 'CAN' : 'CANNOT'} collect name and contact information for callbacks
-- ${assistantServices.provideContactDetails ? 'CAN' : 'CANNOT'} share business contact information from above
-- ${assistantServices.sayMessage ? 'CAN' : 'CANNOT'} deliver messages to callers
-- ${assistantServices.bookMeeting ? 'CAN' : 'CANNOT'} schedule meetings`;
-
-      // Use active system prompt if available, otherwise default behavior
-      let systemPrompt;
-      if (activeSystemPrompt?.prompt) {
-        // Custom system prompt with context injection
-        systemPrompt = `${activeSystemPrompt.prompt}
-
-IMPORTANT CONTEXT - ALWAYS USE THESE ACTUAL VALUES:
-- You are ${assistantName}
-- Current conversation state: ${session.current_state}
-- Collected data so far: ${JSON.stringify(session.collected_data)}
-${contactInfo}
-${serviceRules}
-
-CRITICAL: When sharing contact details, use the EXACT values listed above. Never say "insert contact number here" or similar placeholders. Use the actual phone numbers, emails, and addresses provided.`;
-      } else {
-        // Default system prompt with clear contact detail instructions
-        systemPrompt = `You are ${assistantName}, a professional AI receptionist for this business. Current state: ${session.current_state}. 
-              Collected data: ${JSON.stringify(session.collected_data)}.
-              ${contactInfo}
-              ${serviceRules}
-              
-              RULES:
-              - Be natural, conversational and professional
-              - ONLY provide services that are enabled above
-              - Keep responses under 30 words
-              - Remember what was discussed already - don't repeat questions
-              - Build on the conversation naturally
-              - When sharing contact details, use the EXACT values provided above
-              - NEVER use placeholders like "insert contact number here"
-              - If contact info is "Not available", say "I don't have that information available"
-              - If greeting state, welcome them and ask how you can help
-              - If collecting info, gather missing details
-              - If confirming, summarize and confirm details
-              - If ending, provide closure and next steps
-              - Speak naturally without robotic phrases`;
-      }
-
-      // Build conversation history for ChatGPT context
-      const conversationMessages = [
-        {
-          role: 'system',
-          content: systemPrompt
-        }
-      ];
-
-      // Add conversation history (limit to last 6 for speed)
-      if (transcripts && transcripts.length > 0) {
-        transcripts.slice(-6).forEach(transcript => { // Reduced from 10 to 6
-          conversationMessages.push({
-            role: transcript.speaker === 'caller' ? 'user' : 'assistant',
-            content: transcript.message
-          });
-        });
-      }
-
-      // Add current user input
-      conversationMessages.push({
-        role: 'user',
-        content: speechResult
+      await supabase.from('transcripts').insert({
+        call_id: call.id,
+        speaker: 'caller',
+        message: speechResult
       });
 
-      // FIRST: Extract data from the speech before generating response
-      const extractionPrompt = `Extract structured information from this caller message: "${speechResult}"
+      const conversationMessages = [
+        { role: 'system', content: 'You are an AI receptionist.' },
+        { role: 'user', content: speechResult }
+      ];
 
-      Look for and extract the following specific information:
-      1. REASON FOR CALL - What is the caller calling about? (e.g., "appointment", "complaint", "inquiry", "support")
-      2. CALLER NAME - Full name of the person calling
-      3. CALLER PHONE NUMBER - Phone number (format properly)
-      4. CALLER EMAIL - Email address if provided
-      5. PERSON THEY WANT TO SPEAK TO - Who specifically they're looking for (e.g., "Dr. Smith", "Manager", "Sarah from sales")
-      6. MESSAGE - Any specific message they want to leave
-      7. ADDITIONAL INFO - Any other important details
-
-      Current collected data: ${JSON.stringify(session.collected_data)}
-
-      Return ONLY a JSON object with extracted information. If no new information is found, return empty object {}.
-      Use exactly these field names:
-      {
-        "reason_for_call": "Brief description of why they're calling",
-        "caller_name": "Full name",
-        "caller_phone": "+1 (555) 123-4567", 
-        "caller_email": "email@example.com",
-        "looking_for": "Person or department they want to speak to",
-        "message": "Any specific message they want to leave",
-        "additional_info": "Other relevant details"
-      }`;
-
-      // Extract data using OpenAI
-      const extractionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      const extractDataPromise = fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
-            { role: 'system', content: extractionPrompt },
+            { role: 'system', content: 'Extract structured info from user message.' },
             { role: 'user', content: speechResult }
           ],
-          max_tokens: 300,
-          temperature: 0.1,
-        }),
+          temperature: 0.1
+        })
       });
 
-      let extractedData = {};
-      if (extractionResponse.ok) {
-        const extractionResult = await extractionResponse.json();
-        try {
-          extractedData = JSON.parse(extractionResult.choices[0].message.content.trim());
-          console.log('Extracted data:', extractedData);
-        } catch (e) {
-          console.warn('Could not parse extracted data:', e);
-        }
-      }
-
-      // Merge with existing collected data
-      const updatedCollectedData = { ...session.collected_data, ...extractedData };
-      console.log('Updated collected data:', updatedCollectedData);
-
-      // Get ChatGPT response with conversation context
-      const chatGptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      const responseGenPromise = fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini', // Fast model optimized for speed
+          model: 'gpt-4o-mini',
           messages: conversationMessages,
-          max_tokens: 100, // Reduced for faster responses
-          temperature: 0.3, // Lower for more consistent, faster responses
-          presence_penalty: 0.1,
-          frequency_penalty: 0.1,
-          top_p: 0.9 // Focus on most likely responses for speed
-        }),
+          max_tokens: 100,
+          temperature: 0.3
+        })
       });
+
+      const [extractionResponse, chatGptResponse] = await Promise.all([
+        extractDataPromise,
+        responseGenPromise
+      ]);
 
       const chatData = await chatGptResponse.json();
-      response = chatData.choices[0].message.content;
+      const response = chatData.choices?.[0]?.message?.content || "";
 
-      // Update session state without changing call status (Twilio webhooks handle that)
-      if (session.current_state === DIALOGUE_STATES.GREETING) {
-        nextState = DIALOGUE_STATES.COLLECTING_INFO;
-      } else if (session.current_state === DIALOGUE_STATES.COLLECTING_INFO) {
-        // Check for conversation ending cues - be more specific to avoid premature endings
-        const lowerResponse = response.toLowerCase();
-        const lowerSpeech = speechResult.toLowerCase();
-        
-        // Only end conversation on very clear ending phrases
-        if ((lowerSpeech.includes('goodbye') || lowerSpeech.includes('bye bye') || 
-             lowerSpeech.includes('have a good day') || lowerSpeech.includes('thanks bye') ||
-             lowerSpeech.includes('that\'s all') || lowerSpeech.includes('all done')) &&
-            (lowerResponse.includes('goodbye') || lowerResponse.includes('have a') || 
-             lowerResponse.includes('take care'))) {
-          nextState = DIALOGUE_STATES.ENDING;
-        } else if (lowerSpeech.includes('confirm') || lowerSpeech.includes('yes') || 
-                   lowerSpeech.includes('correct') || lowerSpeech.includes('right')) {
-          nextState = DIALOGUE_STATES.CONFIRMING;
-        }
-      } else if (session.current_state === DIALOGUE_STATES.CONFIRMING) {
-        nextState = DIALOGUE_STATES.ENDING;
-      }
-
-      // Save AI response to transcripts
-      await supabase
-        .from('transcripts')
-        .insert({
-          call_id: call.id,
-          speaker: 'agent',
-          message: response
-        });
-
-      // Update session state with collected data
-      await supabase
-        .from('call_sessions')
-        .update({
-          current_state: nextState,
-          collected_data: updatedCollectedData,
-          context: { ...session.context, last_response: response }
-        })
-        .eq('id', session.id);
-
-      console.log('Session updated with collected data:', updatedCollectedData);
-
-    } else {
-      // Check if we've already sent the greeting to prevent duplicates
-      const { data: existingGreeting } = await supabase
-        .from('transcripts')
-        .select('id')
-        .eq('call_id', call.id)
-        .eq('speaker', 'agent')
-        .limit(1);
-        
-      if (!existingGreeting || existingGreeting.length === 0) {
-        // Use custom opening message with assistant name introduction
-        response = `Hi, I'm ${assistantName}. ${openingMessage}`;
-        
-        await supabase
-          .from('transcripts')
-          .insert({
-            call_id: call.id,
-            speaker: 'agent', 
-            message: response
-          });
-      } else {
-        // Greeting already sent, just return a prompt to continue
-        response = "How may I help you today?";
-      }
-    }
-
-    // Handle call ending scenarios
-    if (nextState === DIALOGUE_STATES.ENDING) {
-      // End the call properly
-      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Say voice="Polly.Joanna" prosodyRate="medium">${response}</Say>
-    <Hangup/>
-</Response>`;
-      return new Response(twiml, {
-        headers: { ...corsHeaders, 'Content-Type': 'text/xml' },
+      await supabase.from('transcripts').insert({
+        call_id: call.id,
+        speaker: 'agent',
+        message: response
       });
-    }
-
-    // Generate TwiML response for continuing conversation
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Say voice="Polly.Joanna" prosodyRate="medium">${response}</Say>
-    <Gather input="speech" action="https://idupowkqzcwrjslcixsp.supabase.co/functions/v1/voice-incoming" method="POST" speechTimeout="3" timeout="5">
-    </Gather>
-    <Say voice="Polly.Joanna" prosodyRate="medium">I didn't hear anything. Thank you for calling. Goodbye!</Say>
-    <Hangup/>
-</Response>`;
+    })();
 
     return new Response(twiml, {
       headers: {
@@ -442,7 +151,7 @@ CRITICAL: When sharing contact details, use the EXACT values listed above. Never
 
   } catch (error) {
     console.error('Error in voice-incoming function:', error);
-    
+
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Polly.Joanna" prosodyRate="medium">I'm sorry, I'm experiencing technical difficulties. Please try again later.</Say>

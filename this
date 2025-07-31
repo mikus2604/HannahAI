@@ -1,0 +1,15 @@
+/m-ai-receptionist/
+  ├── public/
+  ├── src/
+  │   ├── components/
+  │   │   ├── Header.tsx
+  │   │   ├── Footer.tsx
+  │   │   └── Receptionist.tsx
+  │   ├── App.tsx
+  │   ├── index.tsx
+  │   └── styles/
+  │       └── tailwind.css
+  ├── package.json
+  ├── tsconfig.json
+  ├── vite.config.ts
+  └── tailwind.config.js

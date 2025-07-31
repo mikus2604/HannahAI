@@ -1,92 +1,77 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// supabase/functions/test-calcom/index.ts
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
   try {
-    const calcomApiKey = Deno.env.get('CALCOM_API_KEY');
-    
-    if (!calcomApiKey) {
-      console.error('Cal.com API key is not set');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Cal.com API key is not configured in Supabase secrets' 
-        }), 
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+    const { user_id } = await req.json();
+
+    if (!user_id) {
+      return new Response(JSON.stringify({ success: false, error: "Missing user_id" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
     }
 
-    console.log('Testing Cal.com API connection...');
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
 
-    // Test the Cal.com API by fetching user profile
-    const response = await fetch('https://api.cal.com/v1/me', {
-      method: 'GET',
+    // Fetch credentials from api_keys
+    const { data, error } = await supabase
+      .from("api_keys")
+      .select("key_name, key_value")
+      .eq("user_id", user_id)
+      .in("key_name", ["calcom_username", "calcom_api_key"]);
+
+    if (error || !data || data.length < 2) {
+      return new Response(JSON.stringify({ success: false, error: "Cal.com credentials not found" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    const creds: Record<string, string> = {};
+    for (const item of data) {
+      creds[item.key_name] = item.key_value;
+    }
+
+    const username = creds["calcom_username"];
+    const apiKey = creds["calcom_api_key"];
+
+    // Validate via Cal.com API
+    const res = await fetch(`https://api.cal.com/v1/users/${username}`, {
       headers: {
-        'Authorization': `Bearer ${calcomApiKey}`,
-        'Content-Type': 'application/json',
-      },
+        Authorization: `Bearer ${apiKey}`
+      }
     });
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Cal.com API error:', response.status, errorData);
-      
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `Cal.com API returned ${response.status}: Invalid API key or access denied`,
-          status: response.status
-        }), 
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+    if (!res.ok) {
+      const errorText = await res.text();
+      return new Response(JSON.stringify({
+        success: false,
+        error: `Cal.com API request failed: ${errorText}`
+      }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
     }
 
-    const data = await response.json();
-    console.log('Cal.com API test successful:', data);
-    
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Cal.com API connection test successful!',
-        userInfo: {
-          username: data.username,
-          name: data.name,
-          email: data.email,
-          timeZone: data.timeZone
-        }
-      }), 
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+    const profile = await res.json();
 
-  } catch (error) {
-    console.error('Error testing Cal.com API:', error);
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: `Connection test failed: ${error.message}` 
-      }), 
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+    return new Response(JSON.stringify({
+      success: true,
+      message: `Connected as ${profile.username}`
+    }), {
+      headers: { "Content-Type": "application/json" }
+    });
+
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    return new Response(JSON.stringify({ success: false, error: "Internal Server Error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 });

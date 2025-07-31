@@ -1,0 +1,29 @@
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+class EmailSender:
+    def send(self, email_content: str):
+        # Email configuration
+        sender_email = "your_email@example.com"
+        receiver_email = "receiver_email@example.com"
+        subject = "Call Notification"
+
+        # Create the email
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = receiver_email
+        msg['Subject'] = subject
+
+        # Attach the email content
+        msg.attach(MIMEText(email_content, 'html'))
+
+        # Send the email
+        try:
+            with smtplib.SMTP('smtp.example.com', 587) as server:
+                server.starttls()
+                server.login(sender_email, "your_password")
+                server.sendmail(sender_email, receiver_email, msg.as_string())
+            print("Email sent successfully.")
+        except Exception as e:
+            print(f"Failed to send email: {e}")
