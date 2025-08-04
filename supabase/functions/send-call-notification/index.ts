@@ -12,6 +12,15 @@ const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+export function escapeHtml(str: string): string {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 async function getApiKey(userId: string, keyName: string): Promise<string | null> {
   try {
     // Try to get user's personal API key first
@@ -146,16 +155,16 @@ serve(async (req) => {
 
     // Create transcript HTML
     const transcriptHtml = call.transcripts && call.transcripts.length > 0
-      ? call.transcripts.map((t: any) => 
-          `<p><strong>${t.speaker}:</strong> ${t.message}</p>`
+      ? call.transcripts.map((t: any) =>
+          `<p><strong>${escapeHtml(t.speaker)}:</strong> ${escapeHtml(t.message)}</p>`
         ).join('')
       : '<p>No transcript available</p>';
 
     // Create recording download button if available
-    const recordingButton = call.recording_url 
-      ? `<a href="${call.recording_url}" 
-           style="background-color: #007bff; color: white; padding: 10px 20px; 
-                  text-decoration: none; border-radius: 5px; display: inline-block; 
+    const recordingButton = call.recording_url
+      ? `<a href="${escapeHtml(call.recording_url)}"
+           style="background-color: #007bff; color: white; padding: 10px 20px;
+                  text-decoration: none; border-radius: 5px; display: inline-block;
                   margin: 10px 0;">
            Download Recording
          </a>`
@@ -166,17 +175,17 @@ serve(async (req) => {
     console.log('Collected data for email:', collectedData);
     
     // Create collected data HTML section
-    const collectedDataHtml = Object.keys(collectedData).length > 0 
+    const collectedDataHtml = Object.keys(collectedData).length > 0
       ? `<div style="background-color: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0;">
            <h3>📋 Collected Information</h3>
            <div style="background-color: white; padding: 15px; border-radius: 4px;">
-             ${collectedData.reason_for_call ? `<p><strong>Reason for Call:</strong> ${collectedData.reason_for_call}</p>` : ''}
-             ${collectedData.caller_name ? `<p><strong>Caller Name:</strong> ${collectedData.caller_name}</p>` : ''}
-             ${collectedData.caller_phone ? `<p><strong>Phone Number:</strong> ${collectedData.caller_phone}</p>` : ''}
-             ${collectedData.caller_email ? `<p><strong>Email:</strong> ${collectedData.caller_email}</p>` : ''}
-             ${collectedData.looking_for ? `<p><strong>Looking For:</strong> ${collectedData.looking_for}</p>` : ''}
-             ${collectedData.message ? `<p><strong>Message:</strong> ${collectedData.message}</p>` : ''}
-             ${collectedData.additional_info ? `<p><strong>Additional Info:</strong> ${collectedData.additional_info}</p>` : ''}
+             ${collectedData.reason_for_call ? `<p><strong>Reason for Call:</strong> ${escapeHtml(collectedData.reason_for_call)}</p>` : ''}
+             ${collectedData.caller_name ? `<p><strong>Caller Name:</strong> ${escapeHtml(collectedData.caller_name)}</p>` : ''}
+             ${collectedData.caller_phone ? `<p><strong>Phone Number:</strong> ${escapeHtml(collectedData.caller_phone)}</p>` : ''}
+             ${collectedData.caller_email ? `<p><strong>Email:</strong> ${escapeHtml(collectedData.caller_email)}</p>` : ''}
+             ${collectedData.looking_for ? `<p><strong>Looking For:</strong> ${escapeHtml(collectedData.looking_for)}</p>` : ''}
+             ${collectedData.message ? `<p><strong>Message:</strong> ${escapeHtml(collectedData.message)}</p>` : ''}
+             ${collectedData.additional_info ? `<p><strong>Additional Info:</strong> ${escapeHtml(collectedData.additional_info)}</p>` : ''}
            </div>
          </div>`
       : '';
@@ -187,11 +196,11 @@ serve(async (req) => {
         
         <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3>Call Details</h3>
-          <p><strong>From:</strong> ${call.from_number}</p>
-          <p><strong>To:</strong> ${call.to_number}</p>
+          <p><strong>From:</strong> ${escapeHtml(call.from_number)}</p>
+          <p><strong>To:</strong> ${escapeHtml(call.to_number)}</p>
           <p><strong>Date:</strong> ${new Date(call.started_at).toLocaleString()}</p>
           <p><strong>Duration:</strong> ${call.call_duration ? formatDuration(call.call_duration) : 'N/A'}</p>
-          <p><strong>Status:</strong> ${call.call_status}</p>
+          <p><strong>Status:</strong> ${escapeHtml(call.call_status)}</p>
         </div>
 
         ${collectedDataHtml}
